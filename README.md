@@ -2,6 +2,7 @@
 
 > **Cloudflare Developer Day Seoul 2026 · Use Case 공모 출품작**
 > 라이브: https://newbornkr.online/tracker · 개발자: 조규민 (개인 참가)
+> 공모용 Worker 미리보기: https://newborn-tracker-preview.gyu4437.workers.dev/tracker (테스트용 합성 데이터만, 검색 노출 안 함)
 
 신생아를 키우는 가족이 **수유·기저귀·수면**을 한 손으로, 혹은 **말로** 기록하고, 엄마·아빠·조부모가 **가족 코드 하나로 같은 기록을 실시간으로 공유**하는 모바일 웹앱(PWA)입니다. 가입·로그인이 없고, 서버에는 가족 코드 원문이 저장되지 않습니다.
 
@@ -140,8 +141,18 @@ docs/         아키텍처 다이어그램, 성장 캘린더 데이터 출처
 
 폰트는 기기 기본 시스템 폰트를 사용하며 외부 웹폰트는 쓰지 않습니다.
 
+## 미리보기 배포 (Workers)
+- URL: https://newborn-tracker-preview.gyu4437.workers.dev/tracker
+- 바인딩: D1 `DB`(미리보기 DB), Queues `PUSH_QUEUE` → `newborn-push-preview`(같은 Worker가 consumer), Cron Triggers `17 18 * * *`, VAPID 키(미리보기 전용, secret)
+- 미리보기는 Cloudflare API로 직접 올리느라 정적 파일을 Worker 모듈에 넣어 `env.ASSETS`와 같은 인터페이스로 제공합니다(`worker/index.js`는 동일). `wrangler deploy`로 배포하면 Workers Static Assets를 그대로 씁니다. 미리보기에는 R2 버킷을 연결하지 않아 사진은 D1 `photo_blobs`로 대체 저장됩니다(코드에 있는 기능).
+
 ## 개발 타임라인
 - ~2026-10: 지역별 육아지원금 안내 사이트(newbornkr.online) 운영 — **본 출품작 아님**
 - 2026-10-29: 아기 기록 트래커 첫 버전 (로컬 저장)
 - 2026-11: 가족 공유(D1), 음성 기록, 성장 캘린더·사진(R2), 푸시 알림, 보기 전용 링크, 다음 1시간 예측
 - 2026-11 (공모 준비): 단독 Worker + Static Assets로 전환, Queues 푸시 fan-out, Cron Triggers 정리 작업 추가
+
+## 라이선스
+이 저장소에는 오픈소스 라이선스가 없습니다. **All rights reserved © 2026 조규민.** 공모 심사를 위해 코드를 열람하는 것은 자유롭지만, 별도 허락 없이 복제·수정·재배포할 수 없습니다. (위 Credits의 서드파티 구성요소는 각자의 라이선스를 따릅니다.)
+
+No open-source license is granted. All rights reserved © 2026 Cho Gyu Min. Viewing for contest review is welcome; copying, modification or redistribution requires permission.
