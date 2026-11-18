@@ -1,0 +1,124 @@
+{
+ "id": "/pt-br/tracker",
+ "name": "baby baby",
+ "short_name": "baby baby",
+ "description": "É só falar que fica registrado: mamadas, sono e fraldas por voz.",
+ "lang": "pt-BR",
+ "dir": "ltr",
+ "start_url": "/pt-br/tracker",
+ "scope": "/",
+ "display": "standalone",
+ "orientation": "portrait",
+ "background_color": "#f0f7ff",
+ "theme_color": "#4F8EF7",
+ "icons": [
+  {
+   "src": "/pwa/app-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "/pwa/app-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "/pwa/app-maskable-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "maskable"
+  },
+  {
+   "src": "/pwa/app-maskable-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ],
+ "shortcuts": [
+  {
+   "name": "Fórmula 100 ml",
+   "short_name": "Fórmula 100 ml",
+   "url": "/pt-br/tracker?say=f%C3%B3rmula%20100",
+   "icons": [
+    {
+     "src": "/pwa/sc-feed.png",
+     "sizes": "96x96",
+     "type": "image/png"
+    }
+   ]
+  },
+  {
+   "name": "Dormiu",
+   "short_name": "Dormiu",
+   "url": "/pt-br/tracker?say=dormiu",
+   "icons": [
+    {
+     "src": "/pwa/sc-sleep.png",
+     "sizes": "96x96",
+     "type": "image/png"
+    }
+   ]
+  },
+  {
+   "name": "Acordou",
+   "short_name": "Acordou",
+   "url": "/pt-br/tracker?say=acordou",
+   "icons": [
+    {
+     "src": "/pwa/sc-wake.png",
+     "sizes": "96x96",
+     "type": "image/png"
+    }
+   ]
+  },
+  {
+   "name": "Fralda xixi",
+   "short_name": "Fralda xixi",
+   "url": "/pt-br/tracker?say=fralda%20xixi",
+   "icons": [
+    {
+     "src": "/pwa/sc-pee.png",
+     "sizes": "96x96",
+     "type": "image/png"
+    }
+   ]
+  },
+  {
+   "name": "Fralda cocô",
+   "short_name": "Fralda cocô",
+   "url": "/pt-br/tracker?say=fralda%20coc%C3%B4",
+   "icons": [
+    {
+     "src": "/pwa/sc-poop.png",
+     "sizes": "96x96",
+     "type": "image/png"
+    }
+   ]
+  }
+ ],
+ "prefer_related_applications": false,
+ "screenshots": [
+  {
+   "src": "/pwa/shot-en-1.jpg",
+   "sizes": "780x1688",
+   "type": "image/jpeg",
+   "form_factor": "narrow",
+   "label": "Hoje num relance · registro por voz"
+  },
+  {
+   "src": "/pwa/shot-en-2.jpg",
+   "sizes": "780x1688",
+   "type": "image/jpeg",
+   "form_factor": "narrow",
+   "label": "Relógio de 24 horas"
+  }
+ ],
+ "categories": [
+  "health",
+  "lifestyle",
+  "utilities"
+ ]
+}

@@ -1,0 +1,21 @@
+{
+  "name": "newborn-tracker",
+  "type": "module",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "astro build",
+    "dev": "astro build && wrangler dev",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
+    "deploy": "astro build && wrangler deploy",
+    "test": "TZ=Asia/Seoul node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "astro": "^5.0.0",
+    "qrcode-generator": "^1.5.2"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

@@ -1,0 +1,124 @@
+{
+ "id": "/tracker",
+ "name": "baby baby",
+ "short_name": "baby baby",
+ "description": "말하면 바로 기록 — 수유·수면·기저귀",
+ "lang": "ko",
+ "dir": "ltr",
+ "start_url": "/tracker",
+ "scope": "/",
+ "display": "standalone",
+ "orientation": "portrait",
+ "background_color": "#f0f7ff",
+ "theme_color": "#4F8EF7",
+ "icons": [
+  {
+   "src": "/pwa/app-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "/pwa/app-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "/pwa/app-maskable-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "maskable"
+  },
+  {
+   "src": "/pwa/app-maskable-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ],
+ "shortcuts": [
+  {
+   "name": "분유 100ml",
+   "short_name": "분유 100ml",
+   "url": "/tracker?say=%EB%B6%84%EC%9C%A0%20100",
+   "icons": [
+    {
+     "src": "/pwa/sc-feed.png",
+     "sizes": "96x96",
+     "type": "image/png"
+    }
+   ]
+  },
+  {
+   "name": "잠들었어",
+   "short_name": "잠들었어",
+   "url": "/tracker?say=%EC%9E%A0%EB%93%A4%EC%97%88%EC%96%B4",
+   "icons": [
+    {
+     "src": "/pwa/sc-sleep.png",
+     "sizes": "96x96",
+     "type": "image/png"
+    }
+   ]
+  },
+  {
+   "name": "깼어",
+   "short_name": "깼어",
+   "url": "/tracker?say=%EA%B9%BC%EC%96%B4",
+   "icons": [
+    {
+     "src": "/pwa/sc-wake.png",
+     "sizes": "96x96",
+     "type": "image/png"
+    }
+   ]
+  },
+  {
+   "name": "기저귀 소변",
+   "short_name": "기저귀 소변",
+   "url": "/tracker?say=%EA%B8%B0%EC%A0%80%EA%B7%80%20%EC%86%8C%EB%B3%80",
+   "icons": [
+    {
+     "src": "/pwa/sc-pee.png",
+     "sizes": "96x96",
+     "type": "image/png"
+    }
+   ]
+  },
+  {
+   "name": "기저귀 대변",
+   "short_name": "기저귀 대변",
+   "url": "/tracker?say=%EA%B8%B0%EC%A0%80%EA%B7%80%20%EB%8C%80%EB%B3%80",
+   "icons": [
+    {
+     "src": "/pwa/sc-poop.png",
+     "sizes": "96x96",
+     "type": "image/png"
+    }
+   ]
+  }
+ ],
+ "prefer_related_applications": false,
+ "screenshots": [
+  {
+   "src": "/pwa/shot-ko-1.jpg",
+   "sizes": "780x1688",
+   "type": "image/jpeg",
+   "form_factor": "narrow",
+   "label": "오늘 기록 한눈에 · 말로 기록하기"
+  },
+  {
+   "src": "/pwa/shot-ko-2.jpg",
+   "sizes": "780x1688",
+   "type": "image/jpeg",
+   "form_factor": "narrow",
+   "label": "24시간 시계 분석"
+  }
+ ],
+ "categories": [
+  "health",
+  "lifestyle",
+  "utilities"
+ ]
+}

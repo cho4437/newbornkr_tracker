@@ -1,0 +1,320 @@
+---
+import { APP_NAME } from "../lib/site";
+// "아기기록" app download page (/tracker/app, /en/tracker/app): what it does, one install button (browser's own one-tap install
+// where offered, otherwise only this browser's steps), QR for PC visitors, and the one sentence to say after installing.
+import { ogImageFor } from "../lib/seo";
+import Base from "../layouts/Base.astro";
+import PwaHead from "../components/PwaHead.astro";
+import { ORIGIN } from "../lib/site";
+import * as T from "../lib/tracker-core.js";
+interface Props { lang: "ko" | "en" | "pt" }
+const { lang } = Astro.props;
+const en = lang !== "ko"; // en + pt
+const pt = lang === "pt";
+const base = pt ? "/pt-br/tracker" : en ? "/en/tracker" : "/tracker";
+const appPath = base + "/app";
+const rows = pt
+  ? T.BIXBY_COMMANDS.pt.map(([name, phrase]) => ({ name, path: `${base}?say=${encodeURIComponent(phrase)}`, what: T.sayLabelPt(T.parseCommandPt(phrase, Date.now())) }))
+  : en
+  ? T.BIXBY_COMMANDS.en.map(([name, phrase]) => ({ name, path: `${base}?say=${encodeURIComponent(phrase)}`, what: T.sayLabelEn(T.parseCommandEn(phrase, Date.now())) }))
+  : [["분유 백", "분유 100"], ["분유 백이십", "분유 120"], ["분유 백오십", "분유 150"], ["모유 십오분", "모유 15분"], ["잠들었어", "잠들었어"], ["깼어", "깼어"], ["기저귀 소변", "기저귀 소변"], ["기저귀 대변", "기저귀 대변"], ["기저귀 둘 다", "기저귀 둘 다"]]
+      .map(([name, phrase]) => ({ name, path: `${base}?say=${encodeURIComponent(phrase)}`, what: T.sayLabel(T.parseCommand(phrase, Date.now())) }));
+const listenPath = `${base}?shortcut=voice`;
+// small inline pictures of the button to look for
+const SHARE = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 10H6a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1h-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
+const K = (x: string) => `<span class="ap-key">${x}</span>`;
+const M_PT = {
+  title: "App baby baby: registre mamadas por voz, grátis", desc: "Grátis, sem cadastro. Instale o baby baby na tela inicial com um toque e registre dizendo “fórmula 120”.",
+  h1: "App baby baby", tag: "Grátis · sem cadastro · sem loja de apps",
+  why: [["🎤", "É só falar: “fórmula 120”, “dormiu”, “fralda de xixi”"], ["👨‍👩‍👧", "Compartilhado na hora com o parceiro e a família"], ["📲", "Instala com um toque — leve, sem loja de apps"]],
+  install: "📲 Instalar baby baby", done: "✅ Instalado! Abra o “baby baby” na tela inicial.", running: "✅ Você já está usando o app.",
+  noPrompt: "Se a janela de instalação não apareceu, faça assim:", stepsH: "Como instalar",
+  steps: {
+    samsung: [`Toque em ${K("≡")} no canto inferior direito`, `Toque em ${K("+ Adicionar página a")} → ${K("Tela inicial")}`, `Toque em ${K("Adicionar")}`],
+    chrome: [`Toque em ${K("⋮")} no canto superior direito`, `Toque em ${K("Adicionar à tela inicial")} (ou ${K("Instalar app")})`, `Toque em ${K("Instalar")}`],
+    "ios-safari": [`Toque em ${K(SHARE)} (Compartilhar) embaixo`, `Role para baixo e toque em ${K("Adicionar à Tela de Início")}`, `Toque em ${K("Adicionar")} no canto superior direito`],
+    "ios-other": [`Toque em ${K(SHARE)} (Compartilhar) ao lado da barra de endereço`, `Toque em ${K("Adicionar à Tela de Início")}`, `Toque em ${K("Adicionar")}`],
+    "android-other": [`Abra esta página no ${K("Chrome")} ou no ${K("Samsung Internet")} para ficar mais fácil`, `Ou: menu do navegador → ${K("Adicionar à tela inicial")}`],
+    desktop: [`Escaneie o QR code com a câmera do celular`, `No celular, toque em ${K("📲 Instalar baby baby")}`],
+  },
+  inAppAndroid: "Navegadores dentro de apps (KakaoTalk, Naver, Instagram…) não instalam apps.", openChrome: "Abrir no Chrome", inAppIos: `Toque em ${K("⋯")} ou ${K("↗")} e escolha ${K("Abrir no Safari")}, depois instale.`,
+  copyLink: "Copiar link", copied: "Copiado",
+  qrH: "Está no computador? Escaneie com o celular", qrSub: "Abra a câmera do celular e aponte para o código.",
+  afterH: "Depois de instalar, é só dizer", afterBixby: ["“Hi Bixby, open baby baby”", "depois: “fórmula 120”"], afterGoogle: "Google: “Ok Google, abrir baby baby”",
+  afterIos: ["Toque em “baby baby” na tela inicial", "depois diga: “fórmula 120”"],
+  routineH: "A Bixby não abre? Uma rotina (1 min)",
+  rSteps: ["Copie o link acima", "Configurações → Modos e Rotinas → Rotinas → + → Adicionar ação → “Abrir site” → colar → Salvar", "Dê o nome “Diário do bebê”. Depois: “Hi Bixby, run Diário do bebê”"],
+  sideH: "📳 Mais rápido: aperte o botão lateral duas vezes", sideTx: "Configurações → Recursos avançados → Botão lateral → Pressionar duas vezes → Abrir app → baby baby",
+  adv: "Avançado: um link por ação (rotinas / widgets)", test: "Abrir (registra de verdade)",
+  verify: "O que está confirmado", back: "← Voltar ao diário",
+  carry: "Este navegador já tem o seu diário. Cada navegador e o app instalado guardam a sua própria cópia, então um novo começa vazio — pegue primeiro um código de transferência e o diário vai junto.", carryGo: "📲 Transferir meu diário", carryView: "👀 Você vê o diário da família só para ver. No app instalado ou em outro navegador, abra 👨‍👩‍👧 Compartilhar em família → entrar com código e digite este código:",
+  privacy: "Seus registros ficam no seu celular (e nos da família, se você ativar o compartilhamento). Sem conta, sem anúncios no app.",
+};
+const M = pt ? M_PT : en ? {
+  title: "Baby Log app: log feeds by voice, free", desc: "Free, no sign-up. Install Baby Log to your home screen in one tap and log by saying “formula 120”.",
+  h1: "baby baby app", tag: "Free · no sign-up · no app store",
+  why: [["🎤", "Just say it: “formula 120”, “fell asleep”, “wet diaper”"], ["👨‍👩‍👧", "Shared live with your partner and family"], ["📲", "Installs in one tap — tiny, no app store needed"]],
+  install: "📲 Install baby baby", done: "✅ Installed! Open “baby baby” on your home screen.", running: "✅ You're using the app.",
+  noPrompt: "If no install window appeared, do this:", stepsH: "How to install",
+  steps: {
+    samsung: [`Tap ${K("≡")} at the bottom right`, `Tap ${K("+ Add page to")} → ${K("Home screen")}`, `Tap ${K("Add")}`],
+    chrome: [`Tap ${K("⋮")} at the top right`, `Tap ${K("Add to home screen")} (or ${K("Install app")})`, `Tap ${K("Install")}`],
+    "ios-safari": [`Tap ${K(SHARE)} (Share) at the bottom`, `Scroll down, tap ${K("Add to Home Screen")}`, `Tap ${K("Add")} at the top right`],
+    "ios-other": [`Tap ${K(SHARE)} (Share) next to the address bar`, `Tap ${K("Add to Home Screen")}`, `Tap ${K("Add")}`],
+    "android-other": [`Open this page in ${K("Chrome")} or ${K("Samsung Internet")} for the best experience`, `Or: browser menu → ${K("Add to home screen")}`],
+    desktop: [`Scan the QR code with your phone camera`, `On your phone, tap ${K("📲 Install baby baby")}`],
+  },
+  inAppAndroid: "In-app browsers (KakaoTalk, Naver, Instagram…) can't install apps.", openChrome: "Open in Chrome", inAppIos: `Tap ${K("⋯")} or ${K("↗")} and choose ${K("Open in Safari")}, then install.`,
+  copyLink: "Copy link", copied: "Copied",
+  qrH: "On a computer? Scan with your phone", qrSub: "Open your phone camera and point it at the code.",
+  afterH: "After installing, just say", afterBixby: ["“Hi Bixby, open baby baby”", "then: “formula 120”"], afterGoogle: "Google: “Hey Google, open baby baby”",
+  afterIos: ["Tap “baby baby” on your home screen", "then say: “formula 120”"],
+  routineH: "Bixby won't open it? One routine (1 min)",
+  rSteps: ["Copy the link above", "Settings → Modes and Routines → Routines → + → Add action → “Open website” → paste → Save", "Name it “Baby log”. Then: “Hi Bixby, run Baby log”"],
+  sideH: "📳 Faster: press the side button twice", sideTx: "Settings → Advanced features → Side button → Double press → Open app → baby baby",
+  adv: "Advanced: one link per action (routines / widgets)", test: "Open (logs for real)",
+  verify: "What's confirmed", back: "← Back to the tracker",
+  carry: "This browser already has your log. Each browser and the installed app keep their own copy, so a new one starts empty — get a move code first and your log carries over.", carryGo: "📲 Move my log", carryView: "👀 You view the family log (view only). In the installed app or another browser, open 👨‍👩‍👧 Family sharing → join with a code and enter this code:",
+  privacy: "Your records stay on your phone (and your family's phones if you turn on sharing). No account, no ads in the app.",
+} : {
+  title: "아기기록 앱 — 말로 하는 수유·수면·기저귀 기록", desc: "무료 · 회원가입 없음. 한 번 탭으로 홈 화면에 설치하고 “분유 120”이라고 말하면 기록돼요.",
+  h1: "baby baby 앱 (아기기록)", tag: "무료 · 회원가입 없음 · 앱스토어 필요 없음",
+  why: [["🎤", "말만 하면 기록: “분유 120”, “잠들었어”, “기저귀 소변”"], ["👨‍👩‍👧", "엄마·아빠·가족 폰에 바로 공유"], ["📲", "한 번 탭으로 설치 — 용량 거의 없음, 앱스토어 필요 없음"]],
+  install: "📲 baby baby 앱 설치", done: "✅ 설치 완료! 홈 화면의 ‘baby baby’를 눌러 보세요.", running: "✅ 지금 앱으로 쓰고 계세요.",
+  noPrompt: "설치 창이 안 뜨면 이렇게 하세요:", stepsH: "설치 방법",
+  steps: {
+    samsung: [`화면 아래 오른쪽 ${K("≡")} 누르기`, `${K("+ 현재 페이지 추가")} → ${K("홈 화면")} 누르기`, `${K("추가")} 누르기`],
+    chrome: [`오른쪽 위 ${K("⋮")} 누르기`, `${K("홈 화면에 추가")} (또는 ${K("앱 설치")}) 누르기`, `${K("설치")} 누르기`],
+    "ios-safari": [`화면 아래 ${K(SHARE)} (공유) 누르기`, `아래로 내려 ${K("홈 화면에 추가")} 누르기`, `오른쪽 위 ${K("추가")} 누르기`],
+    "ios-other": [`주소창 옆 ${K(SHARE)} (공유) 누르기`, `${K("홈 화면에 추가")} 누르기`, `${K("추가")} 누르기`],
+    "android-other": [`${K("Chrome")} 또는 ${K("삼성 인터넷")}으로 열면 가장 쉬워요`, `또는 브라우저 메뉴 → ${K("홈 화면에 추가")}`],
+    desktop: [`휴대폰 카메라로 아래 QR 코드 찍기`, `휴대폰에서 ${K("📲 baby baby 앱 설치")} 누르기`],
+  },
+  inAppAndroid: "카카오톡·네이버·인스타그램 같은 앱 안에서는 설치가 안 돼요.", openChrome: "Chrome으로 열기", inAppIos: `오른쪽 아래 ${K("⋯")} 또는 ${K("↗")} → ${K("Safari로 열기")} 후 설치해 주세요.`,
+  copyLink: "링크 복사", copied: "복사했어요",
+  qrH: "PC에서 보고 있나요? 휴대폰으로 찍으세요", qrSub: "휴대폰 카메라를 켜고 QR 코드에 대면 바로 열려요.",
+  afterH: "설치 후엔 이렇게 말하세요", afterBixby: ["“하이 빅스비, baby baby 열어줘”", "이어서: “분유 120”"], afterGoogle: "구글: “Hey Google, baby baby 열어줘”",
+  afterIos: ["홈 화면의 ‘baby baby’ 누르기", "이어서: “분유 120”"],
+  routineH: "빅스비가 앱을 못 열면: 루틴 1개 (1분)",
+  rSteps: ["위 ‘링크 복사’ 누르기", "설정 → 모드 및 루틴 → 루틴 → + → 동작 추가 → ‘웹사이트로 이동’ → 붙여넣기 → 저장", "이름은 ‘아기 기록’. 이제 “하이 빅스비, 아기 기록 실행해줘”"],
+  sideH: "📳 더 빠르게: 측면 버튼 두 번", sideTx: "설정 → 유용한 기능 → 측면 버튼 → 두 번 누르기 → 앱 열기 → baby baby",
+  adv: "고급: 기록마다 링크 하나 (루틴·위젯용)", test: "열기 (실제로 기록됨)",
+  verify: "확인된 것 / 확인 안 된 것", back: "← 기록 화면으로",
+  carry: "이 브라우저에 쓰던 기록이 있어요. 브라우저·설치한 앱은 저장 공간이 따로라 새 곳에선 처음에 비어 보여요 — 먼저 ‘기록 옮기기’로 코드를 받아 두면 그대로 이어져요.", carryGo: "📲 기록 옮기기", carryView: "👀 가족 기록을 보기 전용으로 보고 있어요. 설치한 앱이나 다른 브라우저에서는 👨‍👩‍👧 가족 공유 → 받은 코드로 참여에 이 코드를 넣어 주세요:",
+  privacy: "기록은 내 폰에만 저장돼요 (가족 공유를 켜면 가족 폰에도). 계정·광고 없음.",
+};
+const PF = ["samsung", "chrome", "ios-safari", "ios-other", "android-other", "desktop"] as const;
+// where the button is on screen, for the little phone picture: [x%, y%]
+const SPOT: Record<string, [number, number]> = { samsung: [86, 93], chrome: [90, 6], "ios-safari": [50, 93], "ios-other": [88, 6], "android-other": [90, 6], desktop: [50, 50] };
+const V_PT = [
+  ["✅", "web.dev / MDN: o Chrome (com Google Play services) e o Samsung Internet no Galaxy instalam web apps como apps Android de verdade (WebAPK), com ícone e atalhos."],
+  ["✅", "Samsung: a Bixby abre apps; o duplo toque no botão lateral pode abrir o app que você escolher."],
+  ["✅", "Google: o Gemini no Android pode “Abrir [nome do app]”."],
+  ["⚠️", "Bixby / Google abrir este web app instalado pelo nome: esperado, mas não documentado para web apps."],
+  ["⚠️", "Os nomes exatos dos menus podem variar conforme a versão do navegador."],
+];
+const V = pt ? V_PT : en ? [
+  ["✅", "web.dev / MDN: Chrome (with Google Play services) and Samsung Internet on Galaxy install web apps as real Android apps (WebAPK) with a launcher icon and app shortcuts."],
+  ["✅", "Samsung: Bixby can open apps; the side button double-press can open an app of your choice."],
+  ["✅", "Google: Gemini on Android can “Open [app name]”."],
+  ["⚠️", "Bixby / Google opening this installed web app by name: expected but not documented for web apps."],
+  ["⚠️", "Exact menu labels can differ by browser version."],
+] : [
+  ["✅", "web.dev·MDN: 갤럭시의 Chrome(구글 플레이 서비스)과 삼성 인터넷은 웹앱을 진짜 안드로이드 앱(WebAPK)으로 설치 — 앱 목록 아이콘·바로가기 지원"],
+  ["✅", "삼성 공식: 빅스비로 앱 열기, 측면 버튼 두 번으로 원하는 앱 열기 가능"],
+  ["✅", "구글 공식: 안드로이드의 Gemini는 “[앱 이름] 열어줘” 지원"],
+  ["⚠️", "빅스비·구글이 설치한 웹앱을 이름으로 여는 것: 될 것으로 보지만 웹앱에 대한 공식 설명은 없음"],
+  ["⚠️", "메뉴 이름은 브라우저 버전에 따라 조금 다를 수 있어요"],
+];
+---
+<Base appTitle={APP_NAME} lang={lang} title={M.title} description={M.desc} path="/tracker/app" tab="tracker" back={base} ogImage={ogImageFor("tracker", lang)}>
+  <PwaHead slot="head" lang={lang} />
+  <div class="ap" id="ap" data-pf="">
+    <header class="ap-hero">
+      <img src="/pwa/app-192.png" width="72" height="72" alt={pt ? "Ícone do app baby baby" : en ? "Baby log app icon" : "아기기록 앱 아이콘"} class="ap-icon" />
+      <div><h1>{M.h1}</h1><p class="ap-tag">{M.tag}</p></div>
+    </header>
+    <ul class="ap-why">{M.why.map(([i, x]) => <li><span aria-hidden="true">{i}</span>{x}</li>)}</ul>
+
+    <section class="ap-card ap-main">
+      <button type="button" class="ap-install" id="ap-install">{M.install}</button>
+      <p class="ap-done" id="ap-done" hidden></p>
+      <div class="ap-carry" id="ap-carry" hidden><p id="ap-carry-tx" data-view={M.carryView}>{M.carry}</p><code class="ap-carry-code" id="ap-carry-code" hidden></code><a class="ap-btn3" id="ap-carry-go" href={base + "#openmove"}>{M.carryGo}</a></div>
+      <div class="ap-inapp" id="ap-inapp-android" hidden>
+        <p>{M.inAppAndroid}</p>
+        <a class="ap-btn2" id="ap-open-chrome" href={appPath}>{M.openChrome}</a>
+        <button type="button" class="ap-btn3 ap-copy" data-path={appPath}>{M.copyLink}</button>
+      </div>
+      <div class="ap-inapp" id="ap-inapp-ios" hidden>
+        <p>{M.inAppAndroid}</p><p set:html={M.inAppIos} />
+        <button type="button" class="ap-btn3 ap-copy" data-path={appPath}>{M.copyLink}</button>
+      </div>
+      {PF.map((pf) => (
+        <div class="ap-steps" data-for={pf} hidden>
+          <p class="ap-steps-h">{pf === "samsung" || pf === "chrome" ? M.noPrompt : M.stepsH}</p>
+          <div class="ap-steps-row">
+            <div class="ap-phone" aria-hidden="true"><span class="ap-dot" style={`left:${SPOT[pf][0]}%;top:${SPOT[pf][1]}%`}></span></div>
+            <ol>{M.steps[pf].map((x) => <li set:html={x} />)}</ol>
+          </div>
+        </div>
+      ))}
+      <p class="ap-small">{M.privacy}</p>
+    </section>
+
+    <section class="ap-card ap-qr" id="ap-qr">
+      <h2>{M.qrH}</h2>
+      <div class="ap-qr-row"><div class="ap-qr-img" id="ap-qr-img" data-path={appPath + "?src=qr"}></div><p>{M.qrSub}<br /><code id="ap-qr-url"></code></p></div>
+    </section>
+
+    <section class="ap-card ap-after">
+      <h2>{M.afterH}</h2>
+      <div class="ap-say" data-show="android desktop">
+        <p class="ap-phrase">{M.afterBixby[0]}</p><p class="ap-phrase2">{M.afterBixby[1]}</p>
+        <p class="ap-small">{M.afterGoogle}</p>
+      </div>
+      <div class="ap-say" data-show="ios" hidden>
+        <p class="ap-phrase">{M.afterIos[0]}</p><p class="ap-phrase2">{M.afterIos[1]}</p>
+      </div>
+      <details class="ap-det" id="ap-routine" data-show="android desktop">
+        <summary>{M.routineH}</summary>
+        <div class="ap-copyrow"><code data-path={listenPath}>{ORIGIN + listenPath}</code><button type="button" class="ap-btn3 ap-copy" data-path={listenPath}>{M.copyLink}</button></div>
+        <ol>{M.rSteps.map((x) => <li>{x}</li>)}</ol>
+      </details>
+      <details class="ap-det" data-show="android desktop">
+        <summary>{M.sideH}</summary>
+        <p>{M.sideTx}</p>
+      </details>
+    </section>
+
+    <details class="ap-det ap-box ap-adv">
+      <summary>{M.adv}</summary>
+      <ul class="ap-list">
+        {rows.map((r) => (
+          <li class="ap-row" data-path={r.path}>
+            <div><b>“{r.name}”</b> <span>{r.what}</span></div>
+            <code class="ap-url">{ORIGIN + r.path}</code>
+            <div class="ap-btns"><button type="button" class="ap-btn3 ap-copy" data-path={r.path}>{M.copyLink}</button><a href={r.path}>{M.test}</a></div>
+          </li>
+        ))}
+      </ul>
+    </details>
+    <details class="ap-det ap-box">
+      <summary>{M.verify}</summary>
+      <ul class="ap-verify">{V.map(([i, x]) => <li><span>{i}</span>{x}</li>)}</ul>
+    </details>
+    <p><a href={base} class="ap-back">{M.back}</a></p>
+  </div>
+  <script>
+    import qrcode from "qrcode-generator";
+    import { detectPlatform, isStandalone, wasInstalled, canPrompt, promptInstall, externalOpenUrl } from "../lib/app-install.js";
+    const $ = (id: string) => document.getElementById(id)!;
+    const root = $("ap");
+    const pf = detectPlatform(navigator.userAgent, navigator.maxTouchPoints || 0);
+    root.dataset.pf = pf;
+    const family = pf.startsWith("ios") || pf === "inapp-ios" ? "ios" : pf === "desktop" ? "desktop" : "android";
+    for (const el of document.querySelectorAll<HTMLElement>("[data-show]")) el.hidden = !el.dataset.show!.split(" ").includes(family);
+    // links for the site you're on (preview or live)
+    for (const el of document.querySelectorAll<HTMLElement>("code[data-path]")) el.textContent = location.origin + el.dataset.path;
+    for (const li of document.querySelectorAll<HTMLElement>(".ap-row")) li.querySelector(".ap-url")!.textContent = location.origin + li.dataset.path;
+    const copiedTx = root.querySelector(".ap-copy") ? (document.documentElement.lang === "pt-BR" ? "Copiado" : document.documentElement.lang === "en" ? "Copied" : "복사했어요") : "";
+    for (const b of document.querySelectorAll<HTMLButtonElement>(".ap-copy")) {
+      const label = b.textContent, url = location.origin + b.dataset.path;
+      b.onclick = async () => {
+        try { await navigator.clipboard.writeText(url); } catch { const t = document.createElement("textarea"); t.value = url; document.body.appendChild(t); t.select(); document.execCommand("copy"); t.remove(); }
+        b.textContent = "✓ " + copiedTx; setTimeout(() => (b.textContent = label), 1800);
+      };
+    }
+    // QR (prominent on a computer, folded away on a phone)
+    const qrUrl = location.origin + $("ap-qr-img").dataset.path;
+    const q = qrcode(0, "M"); q.addData(qrUrl); q.make();
+    $("ap-qr-img").innerHTML = q.createSvgTag({ cellSize: 5, margin: 2, scalable: true });
+    $("ap-qr-url").textContent = qrUrl.replace(/^https?:\/\//, "").replace("?src=qr", "");
+    $("ap-qr").hidden = family !== "desktop";
+    // install
+    const btn = $("ap-install") as HTMLButtonElement;
+    const steps = (show = true) => { const s = root.querySelector<HTMLElement>(`.ap-steps[data-for="${pf}"]`); if (s) s.hidden = !show; return s; };
+    const done = (tx: string) => { btn.hidden = true; $("ap-done").textContent = tx; $("ap-done").hidden = false; for (const s of root.querySelectorAll<HTMLElement>(".ap-steps,.ap-inapp")) s.hidden = true; };
+    const DONE = document.documentElement.lang === "pt-BR" ? "✅ Instalado! Abra o “baby baby” na tela inicial." : document.documentElement.lang === "en" ? "✅ Installed! Open “baby baby” on your home screen." : "✅ 설치 완료! 홈 화면의 ‘baby baby’를 눌러 보세요.";
+    const RUNNING = document.documentElement.lang === "pt-BR" ? "✅ Você já está usando o app." : document.documentElement.lang === "en" ? "✅ You're using the app." : "✅ 지금 앱으로 쓰고 계세요.";
+    // a log already lives in this browser? new browsers / the iPhone home-screen app start with their own empty storage
+    const ls = (k: string) => { try { return JSON.parse(localStorage.getItem("nb_tracker_v1" + k) || "null"); } catch { return null; } };
+    const fam = ls("_family"), hasLog = !!fam || ((ls("") || {}).entries || []).length > 0;
+    if (hasLog && (pf.startsWith("inapp") || pf.startsWith("ios")) && !isStandalone()) $("ap-carry").hidden = false;
+    const viewer = !!(fam && fam.role === "view" && fam.code);
+    if (viewer) { // a view-only device has no move code: it just needs its view code in the other browser / the app
+      $("ap-carry-tx").textContent = $("ap-carry-tx").dataset.view || ""; const cc = $("ap-carry-code"); cc.hidden = false;
+      cc.textContent = String(fam.code).replace(/(.{4})(?=.)/g, "$1-"); ($("ap-carry-go") as HTMLAnchorElement).hidden = true;
+    }
+    if (pf === "inapp-android") {
+      $("ap-inapp-android").hidden = false; btn.hidden = true;
+      const a = $("ap-open-chrome") as HTMLAnchorElement; a.href = externalOpenUrl(location.origin + location.pathname);
+      // in a family with nothing waiting to upload: hand a one-time move code to Chrome so the log comes along
+      if (viewer) a.href = externalOpenUrl(location.origin + $("ap-carry-go").getAttribute("href")!.replace("#openmove", "") + "?join=" + fam.code); // Chrome joins as view-only by itself (intent URLs drop "#", so ?join=)
+      else if (fam && fam.code && !Object.keys(ls("_outbox") || {}).length) a.onclick = async (ev) => {
+        ev.preventDefault();
+        try {
+          const r = await fetch("/api/family/move", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: fam.code, dev: ls("_dev"), nick: fam.nick || "" }), cache: "no-store" });
+          const d = await r.json(); if (!r.ok || !d.move) throw 0;
+          location.href = externalOpenUrl(location.origin + $("ap-carry-go").getAttribute("href")!.replace("#openmove", "") + "?move=" + d.move);
+        } catch { location.href = a.href; }
+      };
+    }
+    else if (pf === "inapp-ios") { $("ap-inapp-ios").hidden = false; btn.hidden = true; }
+    else if (pf.startsWith("ios") || pf === "android-other" || pf === "desktop") steps(true); // no one-tap install there: show this browser's steps right away
+    if (isStandalone()) done(RUNNING); else if (wasInstalled()) done(DONE);
+    addEventListener("nb-installed", () => done(DONE));
+    btn.onclick = async () => {
+      if (canPrompt()) { const r = await promptInstall(); if (r === "accepted") done(DONE); else if (r === "unavailable") steps(true); return; }
+      const s = steps(true); if (s) { s.scrollIntoView({ behavior: "smooth", block: "center" }); s.classList.remove("ap-flash"); void s.offsetWidth; s.classList.add("ap-flash"); }
+      else if (family === "desktop") $("ap-qr").scrollIntoView({ behavior: "smooth", block: "center" });
+    };
+  </script>
+</Base>
+<style>
+  .ap{max-width:620px;margin:0 auto;padding:4px 2px 40px;line-height:1.6}
+  .ap-hero{display:flex;gap:14px;align-items:center;margin:6px 0 10px}
+  .ap-icon{border-radius:18px;box-shadow:0 6px 16px rgba(79,142,247,.3)}
+  .ap h1{font-size:26px;font-weight:900;margin:0;letter-spacing:-.5px}
+  .ap h2{font-size:17px;font-weight:800;margin:0 0 6px}
+  .ap-tag{margin:0;font-size:14px;font-weight:700;color:var(--secfg)}
+  .ap-why{list-style:none;padding:0;margin:0 0 14px}.ap-why li{display:flex;gap:10px;font-weight:700;font-size:15px;margin:6px 0}.ap-why span{width:24px;text-align:center}
+  .ap-card{border:1px solid var(--border);border-radius:20px;background:var(--card);padding:16px;margin:0 0 12px}
+  .ap-main{border:2px solid var(--primary);box-shadow:0 8px 24px rgba(79,142,247,.18)}
+  .ap-install{display:block;width:100%;border:0;border-radius:18px;padding:20px 16px;font:inherit;font-size:22px;font-weight:900;color:#fff;background:linear-gradient(135deg,#4F8EF7,#3b6fe0);cursor:pointer;box-shadow:0 6px 16px rgba(79,142,247,.35)}
+  .ap [hidden]{display:none!important}
+  .ap-done{font-size:18px;font-weight:900;color:#047857;margin:0}
+  .ap-steps{margin-top:12px;background:rgba(79,142,247,.07);border-radius:14px;padding:12px}
+  .ap-steps.ap-flash{animation:apFlash 1.2s ease}
+  @keyframes apFlash{0%{box-shadow:0 0 0 0 rgba(79,142,247,.6)}100%{box-shadow:0 0 0 14px rgba(79,142,247,0)}}
+  .ap-steps-h{margin:0 0 8px;font-weight:800;font-size:14px}
+  .ap-steps-row{display:flex;gap:14px;align-items:flex-start}
+  .ap-steps ol{margin:0;padding-left:20px;font-size:15px;font-weight:600}.ap-steps li{margin:6px 0}
+  .ap-phone{position:relative;flex:none;width:58px;height:104px;border:3px solid #334155;border-radius:12px;background:#fff}
+  .ap-dot{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,.6);animation:apPing 1.4s infinite}
+  @keyframes apPing{0%{box-shadow:0 0 0 0 rgba(239,68,68,.6)}100%{box-shadow:0 0 0 12px rgba(239,68,68,0)}}
+  @media (prefers-reduced-motion:reduce){.ap-dot,.ap-steps.ap-flash{animation:none}}
+  .ap :global(.ap-key){display:inline-flex;align-items:center;gap:3px;border:1px solid var(--border);background:#fff;border-radius:8px;padding:0 7px;font-weight:800;font-size:14px;line-height:1.7;vertical-align:1px;white-space:nowrap}
+  .ap-inapp{margin-top:4px;background:#fffbeb;border:1px solid #fbbf24;border-radius:14px;padding:12px;font-weight:700}
+  .ap-inapp p{margin:0 0 8px}
+  .ap-carry{margin-top:4px;background:#eff6ff;border:1px solid #93c5fd;border-radius:14px;padding:12px;font-size:14px}.ap-carry p{margin:0 0 8px}.ap-carry a{display:inline-block;text-decoration:none}.ap-carry[hidden]{display:none!important}.ap-carry-code{display:block;font-size:15px;font-weight:700;letter-spacing:.5px;margin:0 0 6px;word-break:break-all}.ap-carry-code[hidden]{display:none}
+  .ap-btn2{display:block;text-align:center;border-radius:14px;padding:14px;font-size:18px;font-weight:900;color:#fff;background:var(--primary);text-decoration:none;margin-bottom:8px}
+  .ap-btn3{border:1px solid var(--border);background:#fff;border-radius:12px;padding:9px 14px;font:inherit;font-size:14px;font-weight:800;cursor:pointer;color:var(--fg)}
+  .ap-small{font-size:13px;color:var(--secfg);margin:10px 0 0}
+  .ap-qr-row{display:flex;gap:16px;align-items:center}
+  .ap-qr-img{width:150px;height:150px;flex:none;background:#fff;border-radius:12px;padding:4px}
+  .ap-qr-img :global(svg){width:100%;height:100%}
+  .ap-qr-row code{font-size:13px;font-weight:700}
+  .ap-phrase{font-size:20px;font-weight:900;margin:2px 0}
+  .ap-phrase2{font-size:17px;font-weight:800;color:var(--primary);margin:0}
+  .ap-det{margin-top:10px}.ap-det summary{cursor:pointer;font-weight:800;font-size:15px;padding:4px 0}
+  .ap-det ol{padding-left:20px;margin:6px 0 0}
+  .ap-box{border:1px solid var(--border);border-radius:16px;padding:10px 14px;background:var(--card);margin:0 0 12px}
+  .ap-copyrow{display:flex;gap:8px;align-items:center;margin:8px 0}
+  .ap-copyrow code,.ap-url{flex:1;display:block;font-size:12px;word-break:break-all;background:rgba(15,23,42,.05);border-radius:8px;padding:6px 8px;margin:6px 0}
+  .ap-list{list-style:none;padding:0;margin:8px 0 0;display:flex;flex-direction:column;gap:8px}
+  .ap-row{border-top:1px solid var(--border);padding-top:8px}.ap-row span{font-size:13px;color:var(--secfg);font-weight:700}
+  .ap-btns{display:flex;gap:8px;flex-wrap:wrap}
+  .ap-btns a{border:1px solid var(--border);border-radius:12px;padding:9px 12px;font-size:14px;font-weight:800;color:var(--fg);text-decoration:none;background:#fff}
+  .ap-verify{list-style:none;padding:0;margin:6px 0 0}.ap-verify li{display:flex;gap:8px;font-size:14px;margin:4px 0}
+  .ap-back{font-weight:800}
+</style>

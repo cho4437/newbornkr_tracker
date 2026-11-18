@@ -1,0 +1,16 @@
+---
+// Installable "아기기록" app: manifest + iOS meta + service worker, and early capture of the install prompt.
+interface Props { lang: "ko" | "en" | "pt" }
+const { lang } = Astro.props;
+const en = lang !== "ko"; // en + pt (pt falls back to English where not translated)
+---
+<link rel="manifest" href={`/pwa/tracker-${lang}.webmanifest`} />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<!-- apple-mobile-web-app-title comes from Base (appTitle = APP_NAME "baby baby") so there is only one tag -->
+<script is:inline>
+  window.__bip = null;
+  addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); window.__bip = e; dispatchEvent(new Event("nb-installable")); });
+  addEventListener("appinstalled", () => { window.__bip = null; try { localStorage.setItem("nb_tracker_v1_installed", "1"); } catch {} dispatchEvent(new Event("nb-installed")); });
+  if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("/tracker-sw.js", { scope: "/" }).then((r) => r.update()).catch(() => {}));
+</script>

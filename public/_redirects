@@ -1,0 +1,8 @@
+/app /tracker/app 302
+/en/app /en/tracker/app 302
+/tracker/voice-setup /tracker/app 301
+/en/tracker/voice-setup /en/tracker/app 301
+/tracker/bixby /tracker/app 301
+/en/tracker/bixby /en/tracker/app 301
+/bookmarks /growth 301
+/en/bookmarks /en/growth 301

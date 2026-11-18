@@ -1,0 +1,128 @@
+---
+import { GA_ID, CF_BEACON, ORIGIN, SITE_NAME, lp, hasPt, HREFLANG, HTML_LANG, LANG_LABEL, tx, type Lang } from "../lib/site";
+import { icon } from "../lib/icons";
+import { clip, ogImageFor, shortTitle } from "../lib/seo";
+import "../styles/global.css";
+
+interface Props {
+  lang: Lang;
+  title: string;
+  description: string;
+  /** Language-neutral (Korean) path, e.g. "/region/seoul". */
+  path: string;
+  noindex?: boolean;
+  back?: string; // href for the back arrow
+  tab?: "home" | "search" | "growth" | "tracker";
+  /** Page exists only in Korean: no hreflang alternates and no language toggle. */
+  koOnly?: boolean;
+  /** Page exists only in English (path is the real /en path): no hreflang alternates and no language toggle. */
+  enOnly?: boolean;
+  /** Explicit language versions of this page (overrides the ko/en(/pt) default), e.g. ["en", "pt"] for a page with no Korean version. */
+  langs?: Lang[];
+  ogTitle?: string;
+  ogDescription?: string;
+  bodyClass?: string;
+  /** Absolute share image URL (1200x630). Defaults to the site card for the page language. */
+  ogImage?: string;
+  /** JSON-LD objects rendered in <head>. */
+  jsonLd?: unknown[];
+  /** Home-screen name on iPhone (apple-mobile-web-app-title). The installable tracker app pages pass APP_NAME. */
+  appTitle?: string;
+}
+const { lang, title: rawTitle, description: rawDescription, path, ogImage: ogImageProp, jsonLd = [], noindex = false, back, tab, ogTitle, ogDescription, bodyClass, koOnly: koOnlyProp = false, enOnly = false, appTitle = "육아지원금", langs: langsProp } = Astro.props;
+// language versions of this page: hreflang alternates + language switcher
+const langs: Lang[] = langsProp ?? (koOnlyProp ? ["ko"] : enOnly ? ["en"] : hasPt(path) ? ["ko", "en", "pt"] : ["ko", "en"]);
+const koOnly = langs.length < 2; // single-language page
+// Naver Search Advisor: title <= 40 chars, description <= 80 chars (safety net; templates aim to fit already).
+const title = shortTitle(rawTitle);
+const description = clip(rawDescription);
+const ogImage = ogImageProp ?? ogImageFor("default", lang);
+const en = lang !== "ko"; // English or Portuguese chrome (layout / fallbacks)
+const T = (ko: string, e: string, pt: string) => tx(lang, ko, e, pt);
+const canonical = ORIGIN + (enOnly && !langsProp ? path : lp(path, lang));
+const urlFor = (l: Lang) => ORIGIN + lp(path, l);
+const xDefault = urlFor(langs.includes("ko") ? "ko" : langs.includes("en") ? "en" : langs[0]);
+const others = langs.filter((l) => l !== lang);
+const tabs = [
+  { id: "tracker", href: lp("/tracker", lang), label: T("아기 기록", "Baby log", "Diário"), icon: "calendar" },
+  { id: "growth", href: lp("/growth", lang), label: T("성장", "Growth", "Crescimento"), icon: "sprout" },
+  { id: "home", href: ORIGIN + lp("/", lang), label: T("지역별", "Regions", "Guias"), icon: "map" },
+];
+---
+<!doctype html>
+<html lang={HTML_LANG[lang]}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="robots" content={noindex ? "noindex, follow" : "index, follow"} />
+    {!noindex && <link rel="canonical" href={canonical} />}
+    {!noindex && !koOnly && langs.map((l) => <link rel="alternate" hreflang={HREFLANG[l]} href={urlFor(l)} />)}
+    {!noindex && !koOnly && <link rel="alternate" hreflang="x-default" href={xDefault} />}
+    <meta name="author" content={SITE_NAME.ko} />
+    <meta name="theme-color" content="#4F8EF7" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content={appTitle} />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content={lang === "pt" ? "pt_BR" : lang === "en" ? "en_US" : "ko_KR"} />
+    <meta property="og:site_name" content={SITE_NAME[lang]} />
+    <meta property="og:title" content={shortTitle(ogTitle ?? title)} />
+    <meta property="og:description" content={clip(ogDescription ?? description)} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={shortTitle(ogTitle ?? title)} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={shortTitle(ogTitle ?? title)} />
+    <meta name="twitter:description" content={clip(ogDescription ?? description)} />
+    <meta name="twitter:image" content={ogImage} />
+    {jsonLd.map((ld) => <script type="application/ld+json" set:html={JSON.stringify(ld).replace(/</g, "\\u003c")} />)}
+    <slot name="head" />
+    {GA_ID && <script async src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}></script>}
+    <script is:inline define:vars={{ GA_ID }}>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      window.gtag = gtag; // define:vars wraps this script in a function, so expose gtag for page scripts
+      gtag('js', new Date());
+      if (GA_ID) gtag('config', GA_ID, { page_location: location.href.replace(/([?&#])(join|move)=[^&#]*/g, '$1') }); // never send family / move codes to analytics
+    </script>
+    <script src="/app.js" defer></script>
+  </head>
+  <body data-lang={lang} class={bodyClass}>
+    <header class="topbar">
+      <div class="wrap topbar-in">
+        {back
+          ? <a class="iconbtn" href={back} aria-label={T("이전 화면으로 돌아가기", "Go back", "Voltar")} set:html={icon("arrow-left", 20)} />
+          : <a class="brand" href={lp("/", lang)}>{SITE_NAME[lang]}</a>}
+        <div class="topbar-right">
+          <slot name="topright" />
+          {!koOnly && others.map((l) => <a class="langtoggle" href={lp(path, l)} hreflang={HREFLANG[l]} lang={HTML_LANG[l]}
+             aria-label={`${LANG_LABEL[l]}`}>{LANG_LABEL[l]}</a>)}
+        </div>
+      </div>
+    </header>
+    <main class="wrap main">
+      <slot />
+    </main>
+    <slot name="after" />
+    <nav class="tabbar" aria-label={T("주요 메뉴", "Main", "Menu principal")}>
+      <div class="wrap tabbar-in">
+        {tabs.map((t) => (
+          <a href={t.href} class:list={["tab", { active: tab === t.id }]} aria-current={tab === t.id ? "page" : undefined}>
+            <span set:html={icon(t.icon, 22)} />
+            <span>{t.label}</span>
+          </a>
+        ))}
+      </div>
+    </nav>
+    <!-- Cloudflare Web Analytics -->
+    {CF_BEACON && <script is:inline defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon={JSON.stringify({ token: CF_BEACON })}></script>}
+  </body>
+</html>

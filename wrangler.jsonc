@@ -1,0 +1,37 @@
+{
+  // 우리 아기 기록 — Workers + Static Assets + D1 + R2 + Queues + Cron Triggers
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "newborn-tracker",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-11-01",
+  "observability": { "enabled": true },
+
+  // Astro build output (npm run build → dist/). /api/* always reaches the Worker first.
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "html_handling": "drop-trailing-slash",
+    "not_found_handling": "404-page",
+    "run_worker_first": ["/api/*"]
+  },
+
+  // D1: family log entries, members, growth profile/milestones, photo metadata, push subscriptions
+  "d1_databases": [
+    { "binding": "DB", "database_name": "newborn-family", "database_id": "<YOUR_D1_DATABASE_ID>", "migrations_dir": "migrations" }
+  ],
+
+  // R2 (private bucket): growth photos. Served only through the Worker after a family-code check.
+  "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "newborn-photos" }],
+
+  // Queues: Web Push fan-out (producer in the API, consumer = queue() handler of this same Worker)
+  "queues": {
+    "producers": [{ "binding": "PUSH_QUEUE", "queue": "newborn-push" }],
+    "consumers": [{ "queue": "newborn-push", "max_batch_size": 10, "max_batch_timeout": 5, "max_retries": 3 }]
+  },
+
+  // Cron Triggers: daily housekeeping at 03:17 KST (18:17 UTC)
+  "triggers": { "crons": ["17 18 * * *"] },
+
+  // VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY: `wrangler secret put ...` in production, .dev.vars locally (see .dev.vars.example).
+  "vars": { "VAPID_SUBJECT": "mailto:you@example.com" }
+}

@@ -1,0 +1,29 @@
+flowchart TB
+  subgraph Phones["가족 기기 (PWA)"]
+    A["엄마 폰<br/>기록·음성 입력"]
+    B["아빠/조부모 폰<br/>보기 전용 가능"]
+    SW["Service Worker<br/>오프라인 캐시 · push 수신"]
+  end
+
+  subgraph CF["Cloudflare"]
+    W["Workers<br/>worker/index.js<br/>API · 라우팅 · Web Push 암호화(VAPID)"]
+    AS["Workers Static Assets<br/>Astro 빌드(HTML/JS/CSS/아이콘)"]
+    D1[("D1<br/>기록 · 가족 멤버 · 성장 마일스톤<br/>사진 메타 · 푸시 구독")]
+    R2[("R2 (비공개)<br/>성장 사진 원본")]
+    Q[["Queues<br/>newborn-push<br/>알림 fan-out · 재시도"]]
+    C(["Cron Triggers<br/>매일 03:17 KST 정리"])
+  end
+
+  PS["Web Push 서비스<br/>(FCM / Mozilla / Apple)"]
+
+  A -- "HTTPS /tracker" --> AS
+  A -- "POST /api/family/sync<br/>(가족 코드 → SHA-256)" --> W
+  B -- "/api/family/*" --> W
+  W -- "SQL (prepare/batch)" --> D1
+  W -- "put/get (가족 확인 후)" --> R2
+  W -- "sendBatch(기기별 메시지)" --> Q
+  Q -- "queue() consumer" --> W
+  C -- "scheduled()" --> W
+  W -- "aes128gcm + VAPID JWT" --> PS
+  PS -- "push" --> SW
+  SW --> B

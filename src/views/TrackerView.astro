@@ -1,0 +1,1650 @@
+---
+import { APP_NAME, lp, tx } from "../lib/site";
+import { ogImageFor } from "../lib/seo";
+import Base from "../layouts/Base.astro";
+import PwaHead from "../components/PwaHead.astro";
+import { MARKUP, STR } from "../lib/tracker-i18n.js";
+interface Props { lang: "ko" | "en" | "pt" }
+const { lang } = Astro.props;
+const M = MARKUP[lang];
+const MVS = STR[lang].move;
+---
+<Base appTitle={APP_NAME} lang={lang} title={M.title} description={M.description} path="/tracker" tab="tracker" bodyClass="tk-body" ogImage={ogImageFor("tracker", lang)}>
+  <PwaHead slot="head" lang={lang} />
+  <div class="tk-gate" id="voice-gate" hidden role="dialog" aria-modal="true" aria-labelledby="gate-tx">
+    <button type="button" class="tk-gate-go" id="gate-go"><span class="tk-gate-ic" aria-hidden="true">🎤</span><b id="gate-tx">{M.gateGo}</b><small>{M.gateSub}</small></button>
+    <p class="tk-gate-why">{M.gateWhy}</p>
+    <button type="button" class="tk-gate-x" id="gate-x">{M.gateClose}</button>
+  </div>
+  <div class="tk-head">
+    <h1 class="tk-h1">{M.h1}</h1>
+    <span class="tk-view-badge" id="view-badge">{M.viewBadge}</span>
+    <span class="tk-fam-st" id="fam-status" hidden></span>
+  </div>
+  <p class="tk-sub">{M.sub}</p>
+  <p class="tk-view-note" id="view-note">{M.viewNote}</p>
+  <div class="tk-cut-note" id="cut-note" hidden><p id="cut-tx"></p><button type="button" id="cut-go"></button></div>
+  <div class="tk-viewgone-note" id="viewgone-note"><p>{M.viewGoneNote}</p><button type="button" id="viewgone-unlock" data-ask={M.viewGoneUnlockAsk}>{M.viewGoneUnlock}</button></div>
+  <div class="tk-say" id="say-banner" hidden role="status" aria-live="polite">
+    <div class="tk-say-main"><b id="say-tx"></b><small id="say-sub" hidden></small></div>
+    <div class="tk-say-act" id="say-act"></div>
+    <button type="button" class="tk-say-x" id="say-x" aria-label={M.close}>✕</button>
+  </div>
+  <div class="tk-fam-row" role="group">
+    <button type="button" class="tk-fam-btn" id="fam-btn">👨‍👩‍👧 {M.famBtn}</button>
+    <button type="button" class="tk-fam-btn" id="fam-push-btn" aria-pressed="false">{M.famPushBtn}</button>
+    <button type="button" class="tk-fam-btn tk-mv-btn" id="mv-btn">{M.mvBtn}</button>
+  </div>
+  <div class="tk-mv-hint" id="mv-hint" hidden><span><b id="mv-hint-tx">{MVS.hint}</b><small id="mv-hint-sub">{MVS.hintSub}</small></span><button type="button" id="mv-hint-go">{MVS.hintGo}</button><button type="button" class="tk-mv-hint-x" id="mv-hint-x" aria-label={M.close}>✕</button></div>
+
+  <div class="tk-since" id="tk-since" aria-live="polite">
+    <div class="tk-chip" id="since-feed"><span>{M.sinceFeed}</span><b>-</b></div>
+    <div class="tk-chip" id="since-sleep"><span>{M.sinceSleep}</span><b>-</b></div>
+    <div class="tk-chip" id="since-diaper"><span>{M.sinceDiaper}</span><b>-</b></div>
+  </div>
+
+  <div class="tk-voice">
+    <div class="tk-voice-panel" id="voice-box" hidden>
+    <div class="tk-coach" id="coach" hidden>{M.coach}<button type="button" id="coach-x" aria-label={M.coachClose}>✕</button></div>
+    <script is:inline>
+      // Show first-visit hints before first paint (same rules as the module script below) so they don't shift the page (CLS).
+      (function () { try {
+        var K = "nb_tracker_v1", d = JSON.parse(localStorage.getItem(K) || "null");
+        var fo = JSON.parse(localStorage.getItem(K + "_family") || "null"), has = d && Array.isArray(d.entries) && d.entries.length > 0, fam = !!fo;
+        if (fo && fo.role === "view") document.body.classList.add("tk-view"); // view-only link: hide every add / edit control before first paint
+        else if (!fo && localStorage.getItem(K + "_viewgone")) document.body.classList.add("tk-view", "tk-viewgone"); // its view link stopped working: still read-only
+        if (!has && !fam && !localStorage.getItem(K + "_mvhint_x")) document.getElementById("mv-hint").hidden = false;
+        var box = document.getElementById("voice-box"), fab0 = document.getElementById("fab");
+        if (box) box.hidden = true; // speak-then-tap panel stays closed until 🎤 말로 기록 or an explicit ?shortcut=voice / ?say=
+        if (fab0 && !document.body.classList.contains("tk-view")) fab0.hidden = false;
+      } catch (e) {} })();
+    </script>
+    <button type="button" class="tk-mic" id="mic" aria-label={M.micAria}>
+      <span class="tk-mic-ic" aria-hidden="true">🎤</span>
+      <span class="tk-mic-tx"><b id="mic-label">{M.micLabel}</b><small id="mic-sub">{M.micSub}</small></span>
+      <span class="tk-mic-go" aria-hidden="true">{M.micGo}</span>
+    </button>
+    <p class="tk-hint" id="mic-hint" hidden></p>
+    <label class="tk-hf" id="hf-wrap" hidden>
+      <input type="checkbox" id="hf-toggle" role="switch" />
+      <span class="tk-hf-sw" aria-hidden="true"></span>
+      <span class="tk-hf-tx"><b>{M.hfLabel} <em>{M.hfBeta}</em></b><small>{M.hfSub}</small></span>
+    </label>
+    </div>
+    <a class="tk-setup-link" href={lp("/tracker/app", lang)}>{M.bixbyLink}</a>
+    <details class="tk-typed tk-say-ex" id="say-ex">
+      <summary>{M.sayTitle}</summary>
+      <ul>{M.sayList.map((x) => <li>{x}</li>)}</ul>
+    </details>
+    <details class="tk-typed" id="typed-wrap">
+      <summary>{M.typed}</summary>
+      <form id="typed" autocomplete="off">
+        <input id="typed-in" type="text" placeholder={M.typedPh} aria-label={M.typedAria} />
+        <button type="submit">{M.typedOk}</button>
+      </form>
+    </details>
+  </div>
+
+  <div class="tk-quick">
+    <button type="button" class="tk-btn tk-feed" id="q-feed"><span class="e">🍼</span><span class="l">{M.qFeed}</span></button>
+    <button type="button" class="tk-btn tk-sleep" id="q-sleep"><span class="e">😴</span><span class="l">{M.qSleep}</span></button>
+    <button type="button" class="tk-btn tk-pee" id="q-pee"><span class="e">💧</span><span class="l">{M.qPee}</span></button>
+    <button type="button" class="tk-btn tk-poop" id="q-poop"><span class="e">💩</span><span class="l">{M.qPoop}</span></button>
+    <button type="button" class="tk-btn tk-both" id="q-both"><span class="e">💩💧</span><span class="l">{M.qBoth}</span></button>
+  </div>
+
+  <section class="tk-card">
+    <div class="tk-card-h"><h2>{M.sumTitle}</h2><span id="sum-date"></span></div>
+    <div class="tk-sum">
+      <div><b id="sum-ml">0</b><span>{M.sumFeeds[0]}<i id="sum-feeds">0</i><span id="sum-feeds-l">{M.sumFeeds[1]}</span></span></div>
+      <div><b id="sum-sleep">{M.sumSleep}</b><span>{M.sumSleepL}</span></div>
+      <div><b id="sum-pee">0</b><span>{M.sumPee}</span></div>
+      <div><b id="sum-poop">0</b><span>{M.sumPoop}</span></div>
+    </div>
+  </section>
+
+  <section class="tk-card tk-clk" id="clk-card">
+    <div class="tk-card-h">
+      <h2>🕒 {M.clkTitle}</h2>
+      <div class="tk-seg tk-clk-mode" id="clk-mode" role="radiogroup" aria-label={M.clkModeAria}>
+        <button type="button" data-v="day" role="radio" class="on" aria-checked="true">{M.clkDay}</button>
+        <button type="button" data-v="tl" role="radio" aria-checked="false">{M.clkTl}</button>
+        <button type="button" data-v="week" role="radio" aria-checked="false">{M.clkWeek}</button>
+        <button type="button" data-v="cmp" role="radio" aria-checked="false">{M.clkCmp}</button>
+      </div>
+    </div>
+    <div class="tk-clk-nav">
+      <button type="button" class="tk-nav" id="clk-prev" aria-label={M.prevDay}>‹</button>
+      <b id="clk-day"></b>
+      <button type="button" class="tk-clk-today" id="clk-today" hidden>{M.clkToday}</button>
+      <button type="button" class="tk-nav" id="clk-next" aria-label={M.nextDay}>›</button>
+    </div>
+    <div class="tk-clk-wrap"><svg id="clk-svg" class="ck-svg" viewBox="0 0 320 320" role="img" aria-label={tx(lang, "24시간 기록 시계", "24-hour log clock", "Relógio de registros de 24 horas")} xmlns="http://www.w3.org/2000/svg"></svg></div>
+    <div class="tl2" id="tl2" hidden></div>
+    <div class="cmp" id="cmp" hidden></div>
+    <p class="tk-clk-hint" id="clk-hint" hidden></p>
+    <ul class="tk-clk-legend">
+      <li><i class="lg-sleep"></i>{M.clkLegend[0]}</li><li><i class="lg-formula"></i>{M.clkLegend[1]}</li><li><i class="lg-breast"></i>{M.clkLegend[2]}</li><li class="lg-d"><i class="lg-pee"></i>{M.clkLegend[3]}</li><li class="lg-d"><i class="lg-poop"></i>{M.clkLegend[4]}</li>
+    </ul>
+    <div class="tk-clk-stats" id="clk-stats"></div>
+  </section>
+
+  <section class="tk-card">
+    <div class="tk-card-h">
+      <button type="button" class="tk-nav" id="day-prev" aria-label={M.prevDay}>‹</button>
+      <h2 id="tl-title">{M.tlTitle}</h2>
+      <button type="button" class="tk-nav" id="day-next" aria-label={M.nextDay}>›</button>
+    </div>
+    <ol class="tk-tl" id="timeline"></ol>
+    <p class="tk-empty" id="tl-empty">{M.empty}</p>
+  </section>
+
+  <section class="tk-card">
+    <div class="tk-card-h"><h2>{M.histTitle}</h2></div>
+    <table class="tk-hist">
+      <thead><tr><th>{M.histCols[0]}</th><th>{M.histCols[1]}</th><th>{M.histCols[2]}</th><th>💧</th><th>💩</th></tr></thead>
+      <tbody id="hist"></tbody>
+    </table>
+  </section>
+
+  <section class="tk-card tk-fc" id="fc-card" aria-live="polite">
+    <div class="tk-card-h"><h2>🔮 {M.fcTitle}</h2></div>
+    <ul class="tk-fc-now" id="fc-now"></ul>
+    <div class="tk-fc-next">
+      <h3>⏱️ {M.fcNextTitle}</h3>
+      <ul class="tk-fc-list" id="fc-next"></ul>
+      <div class="tk-fc-why" id="fc-why" hidden></div>
+    </div>
+    <p class="tk-fc-more" id="fc-more" hidden></p>
+    <p class="tk-fc-disc">{M.fcDisc}</p>
+  </section>
+
+  <section class="tk-card tk-data">
+    <div class="tk-card-h"><h2>{M.dataTitle}</h2></div>
+    <p class="tk-note">{M.dataNote}</p>
+    <div class="tk-data-btns">
+      <button type="button" id="d-export">{M.export}</button>
+      <label class="tk-file">{M.import}<input type="file" id="d-import" accept="application/json,.json" hidden /></label>
+      <button type="button" id="d-clear" class="danger">{M.clear}</button>
+    </div>
+  </section>
+
+  <p class="tk-disc">{M.disc} {M.discShare}</p>
+
+  <div class="tk-sheet-bg" id="sheet-bg" hidden></div>
+  <form class="tk-sheet" id="sheet" hidden autocomplete="off">
+    <div class="tk-sheet-h"><h3 id="sh-title">{M.shTitle}</h3><button type="button" class="tk-x" id="sh-close" aria-label={M.close}>✕</button></div>
+    <div class="tk-f" data-for="feed">
+      <div class="tk-seg" id="sh-kind" role="radiogroup" aria-label={M.kindAria}>
+        <button type="button" data-v="formula" role="radio">{M.formula}</button>
+        <button type="button" data-v="breast" role="radio">{M.breast}</button>
+      </div>
+    </div>
+    <div class="tk-f" data-for="feed-ml">
+      <label for="sh-ml">{M.mlLabel}</label>
+      <div class="tk-chips" id="sh-ml-chips"></div>
+      <div class="tk-step"><button type="button" class="tk-step-b" id="sh-ml-dec" aria-label={tx(lang, "5ml 줄이기", "5 ml less", "5 ml a menos")}>−</button><input id="sh-ml" type="number" inputmode="decimal" min="0" step="any" placeholder="ml" /><button type="button" class="tk-step-b" id="sh-ml-inc" aria-label={tx(lang, "5ml 늘리기", "5 ml more", "5 ml a mais")}>+</button></div>
+    </div>
+    <div class="tk-f" data-for="feed-min">
+      <label for="sh-min">{M.minLabel}</label>
+      <div class="tk-chips" id="sh-min-chips"></div>
+      <input id="sh-min" type="number" inputmode="numeric" min="0" max="300" placeholder={M.minPh} />
+    </div>
+    <div class="tk-f" data-for="diaper">
+      <div class="tk-seg" id="sh-d" role="radiogroup" aria-label={M.diaperAria}>
+        <button type="button" data-v="pee" role="radio">{M.pee}</button>
+        <button type="button" data-v="poop" role="radio">{M.poop}</button>
+        <button type="button" data-v="both" role="radio">{M.both}</button>
+      </div>
+    </div>
+    <div class="tk-f" data-for="time"><label for="sh-t" id="sh-t-label">{M.time}</label><input id="sh-t" type="datetime-local" required /></div>
+    <div class="tk-f" data-for="end"><label for="sh-end">{M.end} <small>{M.endHint}</small></label><input id="sh-end" type="datetime-local" /></div>
+    <button type="submit" class="tk-save" id="sh-save">{M.save}</button>
+    <button type="button" class="tk-del" id="sh-del" hidden>{M.del}</button>
+  </form>
+
+  <div class="tk-sheet-bg" id="fam-bg" hidden></div>
+  <section class="tk-sheet tk-fam" id="fam-sheet" hidden aria-labelledby="fam-title">
+    <div class="tk-sheet-h"><h3 id="fam-title">👨‍👩‍👧 {M.famTitle}</h3><button type="button" class="tk-x" id="fam-close" aria-label={M.close}>✕</button></div>
+    <p class="tk-fam-intro">{M.famIntro}</p>
+    <p class="tk-hint" id="fam-invite" hidden></p>
+    <div class="tk-f"><label for="fam-nick">{M.famNick}</label>
+      <div class="tk-fam-inline"><input id="fam-nick" type="text" maxlength="20" placeholder={M.famNickPh} autocomplete="off" /><button type="button" id="fam-nick-save" class="tk-fam-sec" hidden>{M.famSaveNick}</button></div></div>
+    <div id="fam-off">
+      <p class="tk-fam-cut" id="fam-cut" hidden></p>
+      <button type="button" class="tk-save" id="fam-create">{M.famCreate}</button>
+      <div class="tk-fam-or">{M.famOr}</div>
+      <form class="tk-fam-inline" id="fam-join-form" autocomplete="off">
+        <input id="fam-join-in" type="text" placeholder={M.famJoinPh} autocapitalize="characters" spellcheck="false" />
+        <button type="submit" class="tk-fam-sec" id="fam-join">{M.famJoin}</button>
+      </form>
+    </div>
+    <div id="fam-on" hidden>
+      <div class="tk-f"><label>{M.famCodeL}</label><code class="tk-fam-code" id="fam-code"></code></div>
+      <div class="tk-fam-inline"><button type="button" class="tk-save" id="fam-copy">{M.famCopy}</button><button type="button" class="tk-save tk-fam-share" id="fam-share" hidden>{M.famShare}</button></div>
+      <details class="tk-fam-edit tk-edit-only" id="fam-edit"><summary>{M.famEditH}</summary><p class="tk-hint">{M.famEditTx}</p><button type="button" class="tk-fam-sec" id="fam-edit-go">{M.famEditGo}</button></details>
+      <div class="tk-f"><label>{M.famMembers}</label><ul class="tk-fam-members" id="fam-members"></ul></div>
+      <div class="tk-fam-inline tk-fam-danger"><button type="button" id="fam-regen" class="tk-edit-only">{M.famRegen}</button><button type="button" id="fam-leave">{M.famLeave}</button></div>
+    </div>
+    <p class="tk-fam-warn">{M.famWarn}</p>
+  </section>
+
+  <div class="tk-sheet-bg" id="mv-bg" hidden></div>
+  <section class="tk-sheet tk-fam tk-mv" id="mv-sheet" hidden aria-labelledby="mv-title">
+    <div class="tk-sheet-h"><h3 id="mv-title">🔄 {M.mvTitle}</h3><button type="button" class="tk-x" id="mv-close" aria-label={M.close}>✕</button></div>
+    <p class="tk-fam-intro">{M.mvIntro}</p>
+    <div class="tk-mv-box" id="mv-send">
+      <h4>{M.mvSendH}</h4>
+      <p class="tk-hint" id="mv-q" hidden></p>
+      <button type="button" class="tk-save" id="mv-start" hidden>{M.mvStart}</button>
+      <div id="mv-out" hidden>
+        <div class="tk-mv-row"><div class="tk-mv-qr" id="mv-qr" aria-hidden="true"></div><div class="tk-mv-cd"><code id="mv-code"></code><small id="mv-left"></small></div></div>
+        <div class="tk-fam-inline"><button type="button" class="tk-save" id="mv-copy">{M.mvCopy}</button><button type="button" class="tk-save tk-fam-share" id="mv-share" hidden>{M.mvShare}</button></div>
+        <a class="tk-save tk-mv-chrome" id="mv-chrome" hidden>{M.mvChrome}</a>
+        <p class="tk-mv-how">{M.mvHow}</p>
+      </div>
+      <p class="tk-hint tk-mv-err" id="mv-err" hidden></p>
+    </div>
+    <div class="tk-mv-box" id="mv-recv">
+      <h4>{M.mvRecvH}</h4>
+      <form class="tk-fam-inline" id="mv-form" autocomplete="off">
+        <input id="mv-in" type="text" placeholder={M.mvInPh} autocapitalize="characters" spellcheck="false" />
+        <button type="submit" class="tk-fam-sec" id="mv-go">{M.mvGo}</button>
+      </form>
+      <p class="tk-mv-how">{M.mvRecvHint}</p>
+    </div>
+  </section>
+
+  <div class="tk-toast" id="toast" hidden role="status" aria-live="polite">
+    <div class="tk-toast-bar" id="toast-bar"></div>
+    <span class="tk-toast-tx" id="toast-tx"></span>
+    <span class="tk-toast-act" id="toast-act"></span>
+  </div>
+  <button type="button" class="tk-fab" id="fab" aria-label={M.fabAria}><span aria-hidden="true">🎤</span><b>{M.fab}</b></button>
+</Base>
+
+<script>
+  import * as T from "../lib/tracker-core.js";
+  import { babyForecast } from "../lib/tracker-forecast.js";
+  import { STR, pageLang } from "../lib/tracker-i18n.js";
+  import { createSync } from "../lib/tracker-sync.js";
+  import { detectPlatform, externalOpenUrl, isStandalone, wasInstalled, canPrompt, promptInstall, appPushMode, appPushAction } from "../lib/app-install.js";
+  import { createPush } from "../lib/push-client.js";
+  import qrcode from "qrcode-generator";
+  const LANG = pageLang(document.documentElement.lang);
+  const L = STR[LANG];
+  const $ = (id) => document.getElementById(id);
+  const ga = (name, params) => { try { window.gtag && window.gtag("event", name, { ...params, lang: LANG }); } catch {} };
+
+  // ---------- storage ----------
+  function load() {
+    try { const d = JSON.parse(localStorage.getItem(T.STORAGE_KEY) || "null"); return Array.isArray(d?.entries) ? d.entries.map(T.cleanEntry).filter(Boolean) : []; } catch { return []; }
+  }
+  let entries = load();
+  let prefs = (() => { try { return JSON.parse(localStorage.getItem(T.STORAGE_KEY + "_prefs") || "{}"); } catch { return {}; } })();
+  let lastSaved = entries;
+  let Sync = null; // set below (family sharing)
+  function persist() { try { localStorage.setItem(T.STORAGE_KEY, JSON.stringify({ v: 1, entries })); return true; } catch { toast(L.storageFull); return false; } }
+  const viewOnly = () => !!(Sync && Sync.locked);
+  function save() {
+    if (viewOnly()) { entries = lastSaved; render(); toast(L.fam.viewOnlyToast, [], 2500); return; } // view-only: nothing is ever saved or sent
+    const now = Date.now();
+    const d = T.diffEntries(lastSaved, entries);
+    if (d.upserts.length || d.deletes.length) {
+      const prevIds = new Set(lastSaved.map((e) => e.id)), stamped = new Map();
+      for (const e of d.upserts) {
+        const x = { ...e, updatedAt: Math.max(now, (e.updatedAt || 0) + 1) };
+        if (!prevIds.has(e.id) && !x.by && Sync && Sync.nick()) x.by = Sync.nick();
+        if (!prevIds.has(e.id) && !x.dev && Sync) x.dev = Sync.dev;
+        stamped.set(e.id, x);
+      }
+      entries = entries.map((e) => stamped.get(e.id) || e);
+      if (Sync) Sync.recordLocal([...stamped.values()], d.deletes, now);
+    }
+    persist(); lastSaved = entries;
+    render();
+  }
+  const savePrefs = () => { try { localStorage.setItem(T.STORAGE_KEY + "_prefs", JSON.stringify(prefs)); } catch {} };
+  window.addEventListener("storage", (e) => { if (e.key === T.STORAGE_KEY) { entries = load(); lastSaved = entries; render(); } });
+
+  // ---------- render ----------
+  let viewDay = T.startOfDay(Date.now());
+  const dayLabel = (ds) => { const d = new Date(ds), today = T.startOfDay(Date.now());
+    if (ds === today) return L.today; if (ds === T.startOfDay(today - 12 * T.HOUR)) return L.yesterday;
+    return L.dayShort(d); };
+  const ICON = (e) => e.type === "feed" ? "🍼" : e.type === "sleep" ? "😴" : e.d === "poop" ? "💩" : e.d === "both" ? "💩💧" : "💧";
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+  let famOn = false;
+  function render() {
+    const now = Date.now();
+    if (window.__mvHint) window.__mvHint();
+    const li = T.lastInfo(entries, now);
+    $("since-feed").querySelector("b").textContent = li.feed ? L.ago(li.feedAgo) : "-";
+    $("since-sleep").querySelector("span").textContent = li.sleeping ? L.sleepingNow : L.awakeFor;
+    $("since-sleep").querySelector("b").textContent = li.sleeping ? L.dur(li.sleepFor) : li.awakeFor != null ? L.dur(li.awakeFor) : "-";
+    $("since-sleep").classList.toggle("on", li.sleeping);
+    $("since-diaper").querySelector("b").textContent = li.diaper ? L.ago(li.diaperAgo) : "-";
+    const qs = $("q-sleep");
+    qs.classList.toggle("on", li.sleeping);
+    qs.querySelector(".e").textContent = li.sleeping ? "🌤️" : "😴";
+    qs.querySelector(".l").textContent = li.sleeping ? L.btnWoke : L.btnAsleep;
+
+    const today = T.startOfDay(now);
+    const s = T.daySummary(entries, today, now);
+    $("sum-date").textContent = L.dateLong(new Date(now));
+    $("sum-ml").textContent = T.fmtMl(s.ml); $("sum-feeds").textContent = s.feeds; $("sum-feeds-l").textContent = (L.sumFeedsN ? L.sumFeedsN(s.feeds) : $("sum-feeds-l").textContent);
+    $("sum-sleep").textContent = s.sleepMs >= T.MIN ? L.dur(s.sleepMs) : L.zeroDur;
+    $("sum-pee").textContent = s.pee; $("sum-poop").textContent = s.poop;
+
+    if (viewDay > today) viewDay = today;
+    $("tl-title").textContent = L.tlTitle(dayLabel(viewDay));
+    $("day-next").disabled = viewDay >= today;
+    const list = T.dayEntries(entries, viewDay, now);
+    $("timeline").innerHTML = list.map((e) => {
+      const time = e.type === "sleep" ? `${L.clock(e.t)}${e.end ? "~" + (LANG !== "ko" ? L.clock(e.end) : T.fmtClock(e.end).replace(/^(오전|오후) /, (m) => (new Date(e.end).getHours() < 12) === (new Date(e.t).getHours() < 12) ? "" : m)) : "~"}` : L.clock(e.t);
+      return `<li><button type="button" class="tk-row ${e.type}${e.type === "sleep" && !e.end ? " live" : ""}" data-id="${esc(e.id)}"><span class="ic">${ICON(e)}</span><span class="tx">${esc(L.describe(e, now))}${famOn && e.by ? `<small class="by">${esc(e.by)}</small>` : ""}</span><span class="tm">${esc(time)}</span></button></li>`;
+    }).join("");
+    $("tl-empty").hidden = list.length > 0;
+
+    const h = T.history(entries, 7, now), max = Math.max(1, ...h.map((d) => d.ml));
+    $("hist").innerHTML = h.map((d) => `<tr data-day="${d.dayStart}" class="${d.dayStart === viewDay ? "sel" : ""}"><td>${dayLabel(d.dayStart)}</td>`
+      + `<td><div class="bar"><i style="width:${Math.round((d.ml / max) * 100)}%"></i></div><span>${L.histFeeds(T.fmtMl(d.ml), d.feeds)}</span></td>`
+      + `<td>${d.sleepMs >= T.MIN ? L.histDur(d.sleepMs) : "-"}</td><td>${d.pee}</td><td>${d.poop}</td></tr>`).join("");
+    renderForecast(now);
+    renderClock(now, today);
+  }
+  // ---------- 지금 우리 아기는 + 다음 1시간 예측 (own log only, computed here in the browser) ----------
+  const FC = L.fc;
+  const roundMl = (v) => T.fmtMl(Math.round(v));
+  const fcAgo = (ms) => L.ago(ms < T.MIN ? 0 : ms); // under a minute reads "방금" / "just now"
+  const confPill = (c) => c && c !== "none" ? `<em class="tk-fc-conf ${c}">${esc(FC.conf[c])}</em>` : "";
+  const fcRow = (icon, kind, main, basis, conf) => `<li class="${kind}"><span class="ic" aria-hidden="true">${icon}</span><span class="tx"><b>${esc(main)}</b>${basis ? `<small>${esc(basis)}</small>` : ""}</span>${confPill(conf)}</li>`;
+  const nowRow = (icon, main, sub = "") => `<li><span class="ic" aria-hidden="true">${icon}</span><span class="tx"><b>${esc(main)}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</span></li>`;
+  const pct = (v) => Math.round(v * 100);
+  function blendBasis(b, whatKey, resMs) {
+    const what = FC.what[whatKey], res = L.dur(resMs);
+    if (!b) return null;
+    if (b.mode === "blend") return FC.basisBlend(what, L.dur(b.recentMs), L.dur(b.usualMs), res, b.usualSource === "clock");
+    if (b.mode === "recent") return FC.basisRecent(what, res);
+    return FC.basisHist(what, res, b.usualSource === "clock");
+  }
+  function blendWhy(b, whatKey) {
+    if (!b || b.mode !== "blend" || !b.trend) return null;
+    const fn = b.trend === "shorter" ? FC.whyShorter : b.trend === "longer" ? FC.whyLonger : FC.whySame;
+    return fn(FC.what[whatKey], L.dur(b.recentMs), L.dur(b.usualMs));
+  }
+  function renderForecast(now) {
+    const f = babyForecast(entries, now), st = f.status, nx = f.nextHour;
+    // status
+    const rows = [];
+    rows.push(st.feed ? nowRow("🍼", FC.lastFeed(fcAgo(st.feed.agoMs), L.describe(st.feed.entry, now))) : nowRow("🍼", FC.noFeed));
+    rows.push(st.sleep ? nowRow(st.sleep.sleeping ? "😴" : "🌤️", st.sleep.sleeping ? FC.sleeping(L.dur(st.sleep.forMs)) : FC.awake(L.dur(st.sleep.forMs))) : nowRow("😴", FC.noSleep));
+    rows.push(st.diaper ? nowRow("🧷", FC.lastDiaper(fcAgo(st.diaper.agoMs), L.describe(st.diaper.entry, now).replace(/^(기저귀 |Diaper: )/, ""))) : nowRow("🧷", FC.noDiaper));
+    const ik = st.intake;
+    if (ik.hasAvg && ik.avgByNowMl != null) {
+      const cmp = ik.vs === "more" ? FC.intakeMore(roundMl(ik.diffMl)) : ik.vs === "less" ? FC.intakeLess(roundMl(-ik.diffMl)) : ik.vs === "same" ? FC.intakeSame : "";
+      rows.push(nowRow("📊", FC.intake(roundMl(ik.todayMl), Math.round(ik.todayFormulaFeeds * 10) / 10), [FC.intakeAvg(roundMl(ik.avgByNowMl), ik.days), cmp].filter(Boolean).join(" · ")));
+    } else if (f.hasData) {
+      rows.push(nowRow("📊", FC.intakeNoAvg(roundMl(ik.todayMl), ik.todayFeeds), ik.todayBreastMin ? FC.breastToday(ik.todayBreastMin) : ""));
+    }
+    const iv = st.interval;
+    const fb = nx.feed.blend;
+    if (fb && fb.mode === "blend") { /* the blended interval is explained under 예측 근거 instead */ }
+    else if (iv.trend) rows.push(nowRow("📈", (iv.trend === "shorter" ? FC.gapShorter : iv.trend === "longer" ? FC.gapLonger : FC.gapSame)(L.dur(iv.recentMs), L.dur(iv.weekMs))));
+    else if (f.hasData) rows.push(nowRow("📈", FC.gapNone));
+    $("fc-now").innerHTML = rows.join("");
+
+    // next hour
+    const out = [];
+    const fd = nx.feed;
+    if (fd.kind !== "none") {
+      const amt = fd.ml != null ? FC.feedAmtMl(fd.ml) : fd.min != null ? FC.feedAmtMin(fd.min) : "";
+      const extra = fd.ml != null ? (fd.amountSource === "slot" ? FC.feedSlotMl(fd.ml) : FC.feedAllMl(fd.ml)) : fd.min != null ? (fd.amountSource === "slot" ? FC.feedSlotMin(fd.min) : FC.feedAllMin(fd.min)) : "";
+      const main = fd.kind === "overdue" ? FC.feedOverdue(L.dur(fd.lateMs), amt) : fd.kind === "soon" ? FC.feedSoon(L.clock(fd.at), amt) : FC.feedLater(L.clock(fd.at), amt);
+      const amtNote = fd.appetite && fd.appetite.trend !== "same" ? FC.amtApp(pct(fd.appetite.ratio)) : extra;
+      const fbasis = blendBasis(fd.blend, "feed", fd.basisGapMs);
+      out.push(fcRow("🍼", fd.kind, main, fbasis ? [fbasis, amtNote].filter(Boolean).join(" · ") : FC.feedBasis(L.dur(fd.basisGapMs), extra), fd.confidence));
+    }
+    const sl = nx.sleep;
+    if (sl.kind !== "none") {
+      const main = sl.sleeping
+        ? (sl.kind === "overdue" ? FC.wakeOverdue(L.dur(sl.lateMs)) : sl.kind === "soon" ? FC.wakeSoon(L.clock(sl.at)) : FC.wakeLater(L.clock(sl.at)))
+        : (sl.kind === "overdue" ? FC.sleepOverdue(L.dur(sl.lateMs)) : sl.kind === "soon" ? FC.sleepSoon(L.clock(sl.at)) : FC.sleepLater(L.clock(sl.at)));
+      const basis = sl.pool === "nap" ? FC.sleepBasisNap(L.dur(sl.basisMs)) : sl.pool === "night" ? FC.sleepBasisNight(L.dur(sl.basisMs)) : sl.pool === "all" ? FC.sleepBasisAll(L.dur(sl.basisMs)) : FC.awakeBasis(L.dur(sl.basisMs));
+      out.push(fcRow(sl.sleeping ? "🌤️" : "😴", sl.kind, main, blendBasis(sl.blend, sl.pool, sl.basisMs) || basis, sl.confidence));
+    }
+    const dp = nx.diaper;
+    if (dp.kind !== "none") {
+      const main = dp.kind === "overdue" ? FC.diaperOverdue(L.dur(dp.lateMs)) : dp.kind === "soon" ? FC.diaperSoon(L.clock(dp.at)) : FC.diaperLater(L.clock(dp.at));
+      out.push(fcRow("🧷", dp.kind, main, blendBasis(dp.blend, "diaper", dp.basisGapMs) || FC.diaperBasis(L.dur(dp.basisGapMs)), dp.confidence));
+    }
+    // 예측 근거: what the recent (last 24h) data changed vs the 7-day pattern
+    const why = [];
+    const fw = blendWhy(fd.blend, "feed"); if (fw) why.push(fw);
+    if (fd.lastFeed) why.push(fd.lastFeed.size === "small" ? FC.whyLastSmall(fd.lastFeed.ml, fd.lastFeed.usualMl) : FC.whyLastBig(fd.lastFeed.ml, fd.lastFeed.usualMl));
+    if (fd.appetite && fd.appetite.trend !== "same") why.push((fd.appetite.trend === "more" ? FC.whyAppMore : FC.whyAppLess)(pct(fd.appetite.ratio)));
+    for (const [b, k] of [[sl.blend, sl.pool], [dp.blend, "diaper"]]) if (b && b.mode === "blend" && b.trend && b.trend !== "same") why.push(blendWhy(b, k));
+    const modes = [fd, sl, dp].map((x) => x.blend && x.blend.mode).filter(Boolean);
+    const mixed = [fd, sl, dp].find((x) => x.blend && x.blend.mode === "blend");
+    if (modes.length && modes.every((m) => m === "history")) why.push(FC.whyNoRecent);
+    else if (modes.length && modes.every((m) => m === "recent")) why.push(FC.whyRecentOnly);
+    else if (mixed && fd.blend && fd.blend.mode === "blend") why.push(FC.whyMix(pct(fd.blend.w)));
+    $("fc-why").innerHTML = why.length ? `<b>${esc(FC.whyTitle)}</b><ul>${why.slice(0, 4).map((w) => `<li>${esc(w)}</li>`).join("")}</ul>` : "";
+    $("fc-why").hidden = !why.length;
+    $("fc-next").innerHTML = out.join("");
+    $("fc-next").hidden = !out.length;
+    const sparse = !out.length || [fd, sl, dp].some((x) => x.kind === "none" || x.confidence === "low");
+    $("fc-more").textContent = FC.none;
+    $("fc-more").hidden = !sparse;
+  }
+  // ---------- 24h clock analytics (read-only) ----------
+  const C = L.clk, CX = 160, CY = 160;
+  let clockMode = "day";
+  const pol = (f, r) => { const a = f * 2 * Math.PI - Math.PI / 2; return [CX + r * Math.cos(a), CY + r * Math.sin(a)]; };
+  const n1 = (v) => Math.round(v * 10) / 10;
+  const arc = (a, b, r) => {
+    if (b - a >= 0.9999) return `M${CX} ${CY - r}A${r} ${r} 0 1 1 ${CX - 0.01} ${CY - r}`;
+    const [x0, y0] = pol(a, r), [x1, y1] = pol(b, r);
+    return `M${n1(x0)} ${n1(y0)}A${r} ${r} 0 ${b - a > 0.5 ? 1 : 0} 1 ${n1(x1)} ${n1(y1)}`;
+  };
+  const dot = (f, r, rad, cls, tip, extra = "") => { const [x, y] = pol(f, r); return `<circle class="${cls}" cx="${n1(x)}" cy="${n1(y)}" r="${rad}"${extra}><title>${esc(tip)}</title></circle>`; };
+  function clockFace(ringR) {
+    let g = `<circle cx="${CX}" cy="${CY}" r="138" class="ck-bg"/>`;
+    for (let h = 0; h < 24; h++) {
+      const [x0, y0] = pol(h / 24, 132), [x1, y1] = pol(h / 24, h % 3 ? 136 : 140);
+      g += `<line x1="${n1(x0)}" y1="${n1(y0)}" x2="${n1(x1)}" y2="${n1(y1)}" class="ck-tick${h % 3 ? "" : " major"}"/>`;
+    }
+    C.hours.forEach((lb, i) => { const [x, y] = pol(i / 8, 151); g += `<text x="${n1(x)}" y="${n1(y)}" class="ck-hr">${esc(lb)}</text>`; });
+    return g;
+  }
+  const nowHand = (frac, r0) => { if (frac == null) return ""; const [x0, y0] = pol(frac, r0), [x, y] = pol(frac, 128); return `<line x1="${n1(x0)}" y1="${n1(y0)}" x2="${n1(x)}" y2="${n1(y)}" class="ck-now"/><circle cx="${n1(x)}" cy="${n1(y)}" r="4" class="ck-now-dot"><title>${esc(C.now)}</title></circle>`; };
+  const centerTx = (lines) => { const y0 = CY - (lines.length - 1) * 9 + 4; return lines.map((t, i) => `<text x="${CX}" y="${y0 + i * 18 + (i ? 1 : 0)}" class="${i ? "ck-c2" : "ck-c1"}">${esc(t)}</text>`).join(""); };
+  const statBox = (label, val, sub = "") => `<div><span>${esc(label)}</span><b>${esc(val)}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</div>`;
+  const durOr = (ms) => (ms != null && ms >= T.MIN ? L.dur(ms) : C.none);
+  // ---------- 시간대별: average formula per 3-hour slot, last 7 days ----------
+  const EN = LANG === "en", r1 = (v) => Math.round(v * 10) / 10;
+  const SL = LANG === "pt"
+    ? { until: (h) => `Até ${h === 24 ? "meia-noite" : h + "h"}`,
+        todayL: "Hoje", avgL: "Média", legend: "Hoje · média de 7 dias",
+        slot: (a, b, ml, n) => `${a}h–${b}h ${ml}ml · ${n} ${n === 1 ? "mamada" : "mamadas"}`,
+        cum: (ml) => `acumulado ${ml}ml`, none: "—", notYet: "ainda não", noAvg: "Ainda sem média de 7 dias",
+        topToday: (ml, n) => `Hoje até agora <b>${ml}ml</b> · ${n} mamadas`,
+        topAvgNow: (ml) => `Normalmente até esta hora <b>${ml}ml</b>`,
+        topAvgDay: (ml, n, d) => `Média diária <b>${ml}ml</b> · ${n} mamadas <small>(últimos ${d} ${d === 1 ? "dia" : "dias"})</small>` }
+    : EN
+    ? { until: (h) => `By ${h === 24 ? "midnight" : h === 12 ? "12 PM" : h < 12 ? h + " AM" : h - 12 + " PM"}`,
+        todayL: "Today", avgL: "Avg", legend: "Today · 7-day avg",
+        slot: (a, b, ml, n) => `${a === 0 ? "12" : a > 12 ? a - 12 : a}–${b === 24 ? "12 AM" : b < 12 ? b + " AM" : b === 12 ? "12 PM" : b - 12 + " PM"} ${ml}ml · ${n} ${n === 1 ? "feed" : "feeds"}`,
+        cum: (ml) => `so far ${ml}ml`, none: "—", notYet: "not yet", noAvg: "No 7-day average yet",
+        topToday: (ml, n) => `Today so far <b>${ml}ml</b> · ${n} feeds`,
+        topAvgNow: (ml) => `Usually by now <b>${ml}ml</b>`,
+        topAvgDay: (ml, n, d) => `Daily avg <b>${ml}ml</b> · ${n} feeds <small>(last ${d} ${d === 1 ? "day" : "days"})</small>` }
+    : { until: (h) => `${String(h).padStart(2, "0")}시까지`,
+        todayL: "오늘", avgL: "평균", legend: "오늘 · 7일 평균",
+        slot: (a, b, ml, n) => `${String(a).padStart(2, "0")}~${String(b).padStart(2, "0")}시 ${ml}ml · ${n}회`,
+        cum: (ml) => `누적 ${ml}ml`, none: "—", notYet: "아직", noAvg: "평균 데이터 없음",
+        topToday: (ml, n) => `오늘 지금까지 <b>${ml}ml</b> · ${n}회`,
+        topAvgNow: (ml) => `평소 이 시간까지 평균 <b>${ml}ml</b>`,
+        topAvgDay: (ml, n, d) => `하루 평균 <b>${ml}ml</b> · ${n}회 <small>(최근 ${d}일 기준)</small>` };
+  function slotView(now) {
+    const r = T.todayVsAverage(entries, now, 7);
+    const fmt = (v) => T.fmtMl(Math.round(v));
+    // avg cumulative "by now": last avg slot whose until > nowH, or last completed
+    let avgByNow = null;
+    if (r.hasAvg) {
+      // use cumulative at the end of the last completed slot, or current slot's avg-so-far equivalent: use previous boundary
+      const done = r.avg.cum.filter((c) => c.until <= r.today.nowH);
+      avgByNow = done.length ? done[done.length - 1].ml : 0;
+      // if we're mid-slot, also include proportional? keep simple: last completed boundary. If before 3am, 0.
+    }
+    let top = `<p class="t4-leg"><i class="td"></i>${esc(SL.todayL)}<i class="av"></i>${esc(SL.avgL)}</p>`;
+    top += `<p class="t4-top td">${SL.topToday(esc(fmt(r.today.ml)), esc(String(r1(r.today.feeds))))}</p>`;
+    if (r.hasAvg) {
+      top += `<p class="t4-top av">${SL.topAvgNow(esc(fmt(avgByNow || 0)))}<br>${SL.topAvgDay(esc(fmt(r.avg.ml)), esc(String(r1(r.avg.feeds))), r.days)}</p>`;
+    } else {
+      top += `<p class="t4-top av muted">${esc(SL.noAvg)}</p>`;
+    }
+    const mx = Math.max(1, r.today.ml || 0, r.hasAvg ? r.avg.ml : 0);
+    const rows = r.today.cum.map((t, i) => {
+      const a = r.avg.cum[i];
+      const todayLine = t.future
+        ? `<div class="t4-line td muted"><b>${esc(SL.todayL)}</b> <span>${esc(SL.none)} (${esc(SL.notYet)})</span></div>`
+        : `<div class="t4-line td"><b>${esc(SL.todayL)}</b> <span>${esc(t.any ? SL.slot(t.from, t.until, fmt(t.slotMl), r1(t.slotFeeds)) : SL.none)} · ${esc(SL.cum(fmt(t.ml)))}</span></div>`;
+      const avgLine = !r.hasAvg
+        ? `<div class="t4-line av muted"><b>${esc(SL.avgL)}</b> <span>${esc(SL.noAvg)}</span></div>`
+        : `<div class="t4-line av"><b>${esc(SL.avgL)}</b> <span>${esc(a.any ? SL.slot(a.from, a.until, fmt(a.slotMl), r1(a.slotFeeds)) : SL.none)} · ${esc(SL.cum(fmt(a.ml)))}</span></div>`;
+      const tw = t.future || t.ml == null ? 0 : Math.round((t.ml / mx) * 100);
+      const aw = r.hasAvg ? Math.round((a.ml / mx) * 100) : 0;
+      return `<li${i === 7 ? ' class="t4-total"' : ""}><div class="t4-k">${esc(SL.until(t.until))}</div>`
+        + todayLine + avgLine
+        + `<div class="t4-bar"><i class="td" style="width:${tw}%"></i></div>`
+        + (r.hasAvg ? `<div class="t4-mark" style="left:${aw}%"><i></i></div>` : "")
+        + `</li>`;
+    }).join("");
+    return top + `<ul class="t4-list">${rows}</ul>`;
+  }
+  // ---------- 비교: pick 2-4 days (or 3/7-day ranges) and overlay them on one 24h clock ----------
+  const CM = C.cmp, CMAX = 4, p2 = (n) => String(n).padStart(2, "0");
+  const CMP_COL = ["#6366f1", "#f59e0b", "#10b981", "#ec4899"]; // A violet, B orange, C green, D pink
+  const ymd = (ms) => { const d = new Date(ms); return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`; };
+  const fromYmd = (v) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || ""); return m ? new Date(+m[1], +m[2] - 1, +m[3]).getTime() : null; };
+  let cmpHtml = "", cmpItems = null; // [{ from: dayStart, len: 1|3|7 }]
+  const cmpDefault = (today) => [{ from: T.addDays(today, -1), len: 1 }, { from: T.addDays(today, -2), len: 1 }];
+  const cmpPreset = (i, today) => i === 0 ? cmpDefault(today)
+    : i === 1 ? [{ from: T.addDays(today, -1), len: 1 }, { from: T.addDays(today, -8), len: 1 }]
+    : [{ from: T.addDays(today, -6), len: 7 }, { from: T.addDays(today, -13), len: 7 }]; // 최근 7일 includes today, same window as the 7일 tab
+  const cmpLabel = (it) => it.len === 1 ? dayLabel(it.from) : `${L.dayShort(new Date(it.from))}–${L.dayShort(new Date(T.addDays(it.from, it.len - 1)))}`;
+  // One 24h face, each item on its own concentric ring (A outer). 3일/7일 items put every day of the range on that one ring (semi-transparent so overlaps show density).
+  function overlayClock(res, labels) {
+    const n = res.length, rOuter = 118, rInner = n <= 1 ? 118 : 62, step = n <= 1 ? 0 : (rOuter - rInner) / (n - 1), sw = n <= 2 ? 14 : n === 3 ? 11 : 9;
+    let g = `<circle cx="${CX}" cy="${CY}" r="138" class="ck-bg"/>`;
+    for (let h = 0; h < 24; h++) { const [x0, y0] = pol(h / 24, 132), [x1, y1] = pol(h / 24, h % 3 ? 136 : 140); g += `<line x1="${n1(x0)}" y1="${n1(y0)}" x2="${n1(x1)}" y2="${n1(y1)}" class="ck-tick${h % 3 ? "" : " major"}"/>`; }
+    C.hours.forEach((lb, i) => { const [x, y] = pol(i / 8, 151); g += `<text x="${n1(x)}" y="${n1(y)}" class="ck-hr">${esc(lb)}</text>`; });
+    let nowF = null;
+    res.forEach((r, i) => {
+      const rr = rOuter - i * step, col = CMP_COL[i], multi = r.len > 1, opac = multi ? 0.5 : 0.95;
+      g += `<circle cx="${CX}" cy="${CY}" r="${rr}" class="ck-track cmp i${i}" style="stroke:${col}26;stroke-width:${sw}"/>`;
+      for (const d of r.days) {
+        for (const s of d.sleeps) g += `<path d="${arc(s.a, s.b, rr)}" class="ck-sleep cmp i${i}${s.live ? " live" : ""}" style="stroke:${col};stroke-width:${sw};opacity:${opac}"><title>${esc((labels[i] || "") + " · " + C.tipSleep(s.from, s.to) + (multi ? " · " + dayLabel(d.dayStart) : ""))}</title></path>`;
+        for (const { f, e } of d.feeds) {
+          const rad = multi ? 3.4 : (e.ml ? Math.min(8, 4 + e.ml / 40) : 5);
+          const extra = e.kind === "breast" ? ` fill="none" stroke="${col}" stroke-width="2.2"` : ` fill="${col}" stroke="#fff" stroke-width="1.2"`;
+          g += dot(f, rr, rad, `ck-feed cmp i${i}${e.kind === "breast" ? " breast" : ""}`, (labels[i] || "") + " · " + (multi ? dayLabel(d.dayStart) + " · " : "") + C.tipFeed(e), extra);
+        }
+        if (d.nowFrac != null) nowF = d.nowFrac;
+      }
+    });
+    g += nowHand(nowF, Math.max(28, rOuter - (n - 1) * step - sw - 8));
+    return `<svg id="cmp-svg" class="ck-svg ck-overlay" viewBox="0 0 320 320" role="img" aria-label="${esc(C.aria(labels.filter(Boolean).join(" · ")))}" xmlns="http://www.w3.org/2000/svg">${g}</svg>`;
+  }
+  function renderCmp(now, today) {
+    if (!cmpItems) cmpItems = cmpDefault(today);
+    const res = cmpItems.map((it) => T.compareItem(entries, it.from, it.len, now));
+    const base = res[0];
+    let h = `<p class="cmp-hint">${esc(CM.hint)}</p><div class="cmp-pre">${CM.presets.map((t, i) => `<button type="button" data-pre="${i}">${esc(t)}</button>`).join("")}</div><div class="cmp-rows">`;
+    cmpItems.forEach((it, i) => {
+      h += `<div class="cmp-row"><i class="cmp-b b${i}">${"ABCD"[i]}</i>`
+        + `<input type="date" data-i="${i}" value="${ymd(it.from)}" max="${ymd(today)}" aria-label="${esc(CM.pick + " " + "ABCD"[i])}">`
+        + `<select data-i="${i}" aria-label="${esc(CM.lenL)}">${[1, 3, 7].map((n) => `<option value="${n}"${n === it.len ? " selected" : ""}>${esc(CM.len[n])}</option>`).join("")}</select>`
+        + (cmpItems.length > 2 ? `<button type="button" class="cmp-x" data-x="${i}" aria-label="${esc(CM.remove)}">×</button>` : "") + `</div>`;
+    });
+    if (cmpItems.length < CMAX) h += `<button type="button" class="cmp-add" id="cmp-add">${esc(CM.add)}</button>`;
+    h += `</div><ul class="cmp-leg">`;
+    const labels = [];
+    res.forEach((r, i) => {
+      const lb = cmpLabel(cmpItems[i]);
+      labels.push("ABCD"[i] + " " + lb);
+      const sub = r.future ? CM.future : !r.daysWithData ? CM.noData : [r.len > 1 ? CM.avgDay : "", r.partial ? CM.soFar : ""].filter(Boolean).join(" · ");
+      h += `<li class="i${i}"><i class="cmp-b b${i}">${"ABCD"[i]}</i><span>${esc(lb)}</span>${sub ? `<small>${esc(sub)}</small>` : ""}</li>`;
+    });
+    h += `</ul><div class="cmp-one">${overlayClock(res, labels)}</div>`;
+    const sign = (v) => (v > 0 ? "+" : v < 0 ? "−" : "±");
+    const cls = (v) => (v > 0 ? "up" : v < 0 ? "dn" : "eq");
+    const ROWS = [
+      ["ml", C.ml, (v) => `${T.fmtMl(Math.round(v))}ml`, (d) => `${sign(d)}${T.fmtMl(Math.abs(Math.round(d)))}ml`],
+      ["feeds", C.feedsL, (v) => CM.feedsN(n1(v)), (d) => `${sign(d)}${n1(Math.abs(d))}`],
+      ["avgFeedGapMs", C.gap, (v) => durOr(v), (d) => Math.abs(d) < T.MIN ? "±0" : `${sign(d)}${L.dur(Math.abs(d))}`],
+      ["sleepMs", C.sleep, (v) => durOr(v), (d) => Math.abs(d) < T.MIN ? "±0" : `${sign(d)}${L.dur(Math.abs(d))}`],
+      ["longestSleepMs", C.longest, (v) => durOr(v), (d) => Math.abs(d) < T.MIN ? "±0" : `${sign(d)}${L.dur(Math.abs(d))}`],
+      ["pee", CM.pee, (v) => String(n1(v)), (d) => `${sign(d)}${n1(Math.abs(d))}`],
+      ["poop", CM.poop, (v) => String(n1(v)), (d) => `${sign(d)}${n1(Math.abs(d))}`],
+    ];
+    h += `<table class="cmp-t"><thead><tr><th></th>${res.map((_, i) => `<th><i class="cmp-b b${i}">${"ABCD"[i]}</i>${i ? "" : ` <small>${esc(CM.base)}</small>`}</th>`).join("")}</tr></thead><tbody>`;
+    for (const [k, label, fv, fd] of ROWS) {
+      h += `<tr><td>${esc(label)}</td>` + res.map((r, i) => {
+        if (!r.daysWithData || r.s[k] == null) return `<td><b>${esc(C.none)}</b></td>`;
+        let d = "";
+        if (i > 0) { const df = T.compareDiff(base, r)[k]; d = df == null ? `<small class="na">${esc(C.none)}</small>` : `<small class="${cls(Math.abs(df) < 1e-9 ? 0 : df)}">${esc(fd(df))}</small>`; }
+        return `<td><b>${esc(fv(r.s[k]))}</b>${d}</td>`;
+      }).join("") + `</tr>`;
+    }
+    h += `</tbody></table>`;
+    if (h !== cmpHtml) { cmpHtml = h; $("cmp").innerHTML = h; } // don't rebuild (and close an open date picker) on the 30s tick
+  }
+  $("cmp").addEventListener("change", (e) => {
+    const el = e.target, i = Number(el.dataset.i); if (!cmpItems || !Number.isInteger(i)) return;
+    if (el.tagName === "INPUT") { const v = fromYmd(el.value); if (v == null) return; cmpItems[i].from = Math.min(v, T.startOfDay(Date.now())); }
+    else if (el.tagName === "SELECT") cmpItems[i].len = Number(el.value) || 1;
+    render(); ga("tracker_compare", { action: "pick", n: cmpItems.length });
+  });
+  $("cmp").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b || !cmpItems) return;
+    const today = T.startOfDay(Date.now());
+    if (b.dataset.pre != null) cmpItems = cmpPreset(Number(b.dataset.pre), today);
+    else if (b.dataset.x != null) cmpItems.splice(Number(b.dataset.x), 1);
+    else if (b.id === "cmp-add" && cmpItems.length < CMAX) { const last = cmpItems[cmpItems.length - 1], first = Math.min(...cmpItems.map((x) => x.from)); cmpItems.push({ from: T.addDays(first, -last.len), len: last.len }); } // next free day(s) before the earliest pick
+    else return;
+    render(); ga("tracker_compare", { action: b.dataset.pre != null ? "preset" : b.dataset.x != null ? "remove" : "add", n: cmpItems.length });
+  });
+  function renderClock(now, today) {
+    // 7일 = last 7 days ending today (or the viewed past day): header dates, rings and averages use the same window
+    const wkEnd = T.weekEndDay(viewDay, now), wkFrom = T.addDays(wkEnd, -6), latestWk = today;
+    $("clk-day").textContent = clockMode === "week" ? `${L.dayShort(new Date(wkFrom))} – ${L.dayShort(new Date(wkEnd))}` : dayLabel(viewDay);
+    $("clk-next").disabled = clockMode === "week" ? wkEnd >= latestWk : viewDay >= today;
+    $("clk-today").hidden = clockMode === "week" ? wkEnd >= latestWk : viewDay >= today;
+    $("cmp").hidden = clockMode !== "cmp";
+    $("clk-card").classList.toggle("cmpon", clockMode === "cmp");
+    if (clockMode === "cmp") { renderCmp(now, today); $("clk-svg").innerHTML = ""; $("clk-stats").innerHTML = ""; $("clk-card").classList.remove("wk", "tl2on"); $("tl2").hidden = true; $("clk-card").querySelector(".tk-clk-nav").hidden = true; return; }
+    $("clk-svg").setAttribute("aria-label", C.aria($("clk-day").textContent));
+    let svg;
+    $("tl2").hidden = clockMode !== "tl";
+    if (clockMode === "tl") {
+      $("tl2").innerHTML = slotView(now);
+      $("clk-hint").hidden = true;
+      $("clk-stats").innerHTML = ""; svg = "";
+    } else if (clockMode === "day") {
+      const c = T.clockDay(entries, viewDay, now), st = c.stats, R = 112;
+      svg = clockFace(R) + `<circle cx="${CX}" cy="${CY}" r="${R}" class="ck-track"/>`;
+      for (const s of c.sleeps) svg += `<path d="${arc(s.a, s.b, R)}" class="ck-sleep${s.live ? " live" : ""}"><title>${esc(C.tipSleep(s.from, s.to))}</title></path>`;
+      svg += `<circle cx="${CX}" cy="${CY}" r="84" class="ck-guide"/><circle cx="${CX}" cy="${CY}" r="64" class="ck-guide"/>`;
+      for (const { f, e } of c.feeds) svg += dot(f, 84, e.ml ? Math.min(10, 4 + e.ml / 30) : 5, e.kind === "breast" ? "ck-breast" : "ck-formula", C.tipFeed(e));
+      for (const { f, e } of c.diapers) svg += dot(f, 64, 4.5, e.d === "pee" ? "ck-pee" : "ck-poop", C.tipDiaper(e), e.d === "both" ? ' stroke="#0ea5e9" stroke-width="2.5"' : "");
+      svg += nowHand(c.nowFrac, 50) + `<text x="${CX}" y="${CY - 32}" class="ck-ic">${c.isToday ? "🕒" : "📅"}</text>` + centerTx(C.center(T.fmtMl(st.ml), durOr(st.sleepMs)));
+      const any = c.sleeps.length || c.feeds.length || c.diapers.length;
+      $("clk-hint").textContent = any ? "" : C.empty; $("clk-hint").hidden = !!any;
+      const li = T.lastInfo(entries, now);
+      const last = c.isToday ? (li.feed ? L.ago(li.feedAgo) : C.none) : (st.lastFeedAt ? L.clock(st.lastFeedAt) : C.none);
+      $("clk-stats").innerHTML = statBox(C.ml, `${T.fmtMl(st.ml)} ml`, C.feeds(st.feeds, st.formula, st.breast))
+        + statBox(C.gap, durOr(st.avgFeedGapMs))
+        + statBox(C.sleep, durOr(st.sleepMs))
+        + statBox(C.longest, durOr(st.longestSleepMs))
+        + statBox(C.diapers, String(st.diapers), C.diaperV(st.pee, st.poop))
+        + statBox(C.last, last, c.isToday && li.feed ? L.clock(li.feed.t) : "");
+    } else {
+      const w = T.clockWeek(entries, wkEnd, 7, now), a = w.avg;
+      svg = clockFace(118);
+      w.days.forEach((d, i) => {
+        const r = 120 - i * 10;
+        svg += `<circle cx="${CX}" cy="${CY}" r="${r}" class="ck-track wk"><title>${esc(dayLabel(d.dayStart))}</title></circle>`;
+        for (const s of d.sleeps) svg += `<path d="${arc(s.a, s.b, r)}" class="ck-sleep wk${s.live ? " live" : ""}"><title>${esc(dayLabel(d.dayStart) + " · " + C.tipSleep(s.from, s.to))}</title></path>`;
+        for (const { f, e } of d.feeds) svg += dot(f, r, 2.6, e.kind === "breast" ? "ck-breast" : "ck-formula", dayLabel(d.dayStart) + " · " + C.tipFeed(e));
+      });
+      const todayRing = w.days.find((d) => d.nowFrac != null);
+      if (todayRing) svg += nowHand(todayRing.nowFrac, 40);
+      svg += centerTx(C.centerWeek(T.fmtMl(Math.round(a.ml)), durOr(a.sleepMs)));
+      $("clk-hint").textContent = w.daysWithData ? `${L.dayShort(new Date(w.from))} – ${L.dayShort(new Date(w.to))} · ` + C.wkTitle(w.daysWithData) + " · " + C.wkHint + (w.days.some((d) => d.partial && d.isToday) ? " · " + C.wkPartial : "") : C.empty; $("clk-hint").hidden = false;
+      $("clk-stats").innerHTML = statBox(C.ml, `${T.fmtMl(Math.round(a.ml))} ml`, C.feeds(n1(a.feeds), 0, 0))
+        + statBox(C.gap, durOr(a.avgFeedGapMs))
+        + statBox(C.sleep, durOr(a.sleepMs))
+        + statBox(C.longest, durOr(a.longestSleepMs), a.longestDay != null ? C.wkLongestOn(L.dayShort(new Date(a.longestDay))) : "")
+        + statBox(C.diapers, String(n1(a.diapers)), C.diaperV(n1(a.pee), n1(a.poop)))
+        + statBox(C.feedsL, String(n1(a.feeds)));
+    }
+    $("clk-svg").innerHTML = svg;
+    $("clk-card").classList.toggle("wk", clockMode === "week");
+    $("clk-card").classList.toggle("tl2on", clockMode === "tl");
+    $("clk-card").querySelector(".tk-clk-nav").hidden = clockMode === "tl";
+  }
+  $("clk-mode").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; clockMode = b.dataset.v; seg("clk-mode", clockMode); render(); ga("tracker_clock", { mode: clockMode }); };
+  // in 7일 mode ‹ › page by whole weeks (no overlapping windows); in 하루 mode by one day
+  $("clk-prev").onclick = () => { viewDay = clockMode === "week" ? T.addDays(T.weekEndDay(viewDay, Date.now()), -7) : T.startOfDay(viewDay - 12 * T.HOUR); render(); };
+  $("clk-next").onclick = () => { if (clockMode === "week") { const e = T.addDays(T.weekEndDay(viewDay, Date.now()), 7); viewDay = e >= T.startOfDay(Date.now()) ? T.startOfDay(Date.now()) : e; } else viewDay = T.startOfDay(viewDay + 36 * T.HOUR); render(); };
+  $("clk-today").onclick = () => { viewDay = T.startOfDay(Date.now()); render(); };
+  setInterval(render, 30000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });
+
+  $("day-prev").onclick = () => { viewDay = T.startOfDay(viewDay - 12 * T.HOUR); render(); };
+  $("day-next").onclick = () => { viewDay = T.startOfDay(viewDay + 36 * T.HOUR); render(); };
+  $("hist").addEventListener("click", (ev) => { const tr = ev.target.closest("tr[data-day]"); if (tr) { viewDay = Number(tr.dataset.day); render(); $("tl-title").scrollIntoView({ behavior: "smooth", block: "center" }); } });
+
+  // ---------- toast ----------
+  let toastTimer = 0, pendingTimer = 0;
+  function toast(text, actions = [], ms = 4500, progress = false) {
+    clearTimeout(toastTimer);
+    const t = $("toast"); $("toast-tx").textContent = text;
+    const act = $("toast-act"); act.innerHTML = "";
+    for (const [label, fn, cls] of actions) { const b = document.createElement("button"); b.type = "button"; b.textContent = label; if (cls) b.className = cls; b.onclick = () => { hideToast(); fn(); }; act.appendChild(b); }
+    const bar = $("toast-bar"); bar.style.transition = "none"; bar.style.width = progress ? "100%" : "0";
+    t.hidden = false;
+    if (progress) requestAnimationFrame(() => requestAnimationFrame(() => { bar.style.transition = `width ${ms}ms linear`; bar.style.width = "0"; }));
+    if (ms) toastTimer = setTimeout(hideToast, ms);
+  }
+  function hideToast() { clearTimeout(toastTimer); $("toast").hidden = true; }
+
+  // ---------- commit helpers ----------
+  /** Apply parsed commands; returns { done: [[cmd, entry]], changes: [{id, prev}] for undo, note } (nothing saved yet). */
+  function applyCmds(cmds) {
+    let list = entries; const done = [], changes = []; let note = null;
+    for (const c of cmds) { const r = T.applyCommand(list, c); if (r.entry) { list = r.entries; done.push([c, r.entry]); changes.push({ id: r.entry.id, prev: r.prev || null }); } else note = L.notes[r.code] || L.cantLog; }
+    return { list, done, changes, note };
+  }
+  const undoChanges = (changes) => { entries = T.revertChanges(entries, changes); save(); if (Sync && Sync.joined) Sync.sync(); };
+  function commitMany(cmds, method, ms = 4500) {
+    if (viewOnly()) { toast(L.fam.viewOnlyToast, [], 2500); return false; }
+    const { list, done, changes, note } = applyCmds(cmds);
+    if (!done.length) { toast(note || L.cantLog); return false; }
+    entries = list; save();
+    for (const [c] of done) ga("tracker_log", { type: c.action === "sleep" ? "sleep" : c.action, method, ...(c.kind ? { kind: c.kind } : {}), ...(c.d ? { diaper: c.d } : {}), ...(c.ml ? { ml: c.ml } : {}) });
+    const last = done[done.length - 1][1], now = Date.now();
+    toast(L.saved(done.map(([c]) => L.describeCmd(c, now)).join("  ·  ")) + (note ? ` (${note})` : ""), [[L.editTime, () => openSheet(last.type, last)], [L.undo, () => { undoChanges(changes); toast(L.undone, [], 2000); }, "undo"]], ms);
+    return true;
+  }
+  const commit = (cmd, method) => commitMany([cmd], method);
+
+  // ---------- quick buttons ----------
+  $("q-pee").onclick = () => commit({ action: "diaper", d: "pee", t: Date.now() }, "tap");
+  $("q-poop").onclick = () => commit({ action: "diaper", d: "poop", t: Date.now() }, "tap");
+  $("q-both").onclick = () => commit({ action: "diaper", d: "both", t: Date.now() }, "tap");
+  $("q-sleep").onclick = () => commit({ action: T.openSleep(entries) ? "sleep_end" : "sleep_start", t: Date.now() }, "tap");
+  $("q-feed").onclick = () => openSheet("feed", null);
+
+  // ---------- sheet (new feed / edit any) ----------
+  const pad = (n) => String(n).padStart(2, "0");
+  const toLocal = (ms) => { const d = new Date(ms); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+  const fromLocal = (v) => { const t = new Date(v).getTime(); return Number.isFinite(t) ? t : null; };
+  let editing = null, sheetType = "feed";
+  const seg = (id, v) => { for (const b of $(id).querySelectorAll("button")) { const on = b.dataset.v === v; b.classList.toggle("on", on); b.setAttribute("aria-checked", String(on)); } };
+  const segVal = (id) => $(id).querySelector("button.on")?.dataset.v;
+  const chips = (id, vals, unit, input) => { $(id).innerHTML = vals.map((v) => `<button type="button" data-v="${v}">${v}${unit}</button>`).join("");
+    $(id).onclick = (e) => { const b = e.target.closest("button"); if (!b) return; $(input).value = b.dataset.v; syncChips(); }; };
+  chips("sh-ml-chips", [60, 90, 120, 150, 180], "", "sh-ml");
+  chips("sh-min-chips", [5, 10, 15, 20, 30], L.minUnit, "sh-min");
+  const syncChips = () => { for (const [c, i] of [["sh-ml-chips", "sh-ml"], ["sh-min-chips", "sh-min"]]) for (const b of $(c).querySelectorAll("button")) b.classList.toggle("on", b.dataset.v === $(i).value); };
+  const stepMl = (d) => { const cur = Number(String($("sh-ml").value).replace(",", ".")) || 0; const v = Math.min(T.ML_MAX, Math.max(0, Math.round((cur + d) * 100) / 100)); $("sh-ml").value = v ? String(v) : ""; syncChips(); };
+  $("sh-ml-dec").onclick = () => stepMl(-5); $("sh-ml-inc").onclick = () => stepMl(5);
+  $("sh-ml").oninput = syncChips; $("sh-min").oninput = syncChips;
+  const showFields = () => {
+    const kind = segVal("sh-kind");
+    for (const f of $("sheet").querySelectorAll(".tk-f")) {
+      const k = f.dataset.for;
+      f.hidden = !(k === "time" || (sheetType === "feed" && (k === "feed" || k === "feed-ml" || (k === "feed-min" && kind === "breast"))) || (sheetType === "diaper" && k === "diaper") || (sheetType === "sleep" && k === "end"));
+    }
+    $("sh-t-label").textContent = sheetType === "sleep" ? L.asleepAt : L.time;
+  };
+  $("sh-kind").onclick = (e) => { const b = e.target.closest("button"); if (b) { seg("sh-kind", b.dataset.v); showFields(); } };
+  $("sh-d").onclick = (e) => { const b = e.target.closest("button"); if (b) seg("sh-d", b.dataset.v); };
+
+  function openSheet(type, entry) {
+    if (viewOnly()) { toast(L.fam.viewOnlyToast, [], 2500); return; }
+    if (entry) entry = entries.find((x) => x.id === entry.id) || entry; // toast "edit time" may hold a pre-save copy
+    editing = entry; sheetType = type;
+    $("sh-title").textContent = (entry ? L.sheetEdit : "") + (type === "feed" ? L.sheetFeed : type === "sleep" ? L.sheetSleep : L.sheetDiaper);
+    seg("sh-kind", entry?.kind || prefs.kind || "formula");
+    $("sh-ml").value = entry ? entry.ml || "" : prefs.ml || "";
+    $("sh-min").value = entry ? entry.min || "" : "";
+    seg("sh-d", entry?.d || "pee");
+    $("sh-t").value = toLocal(entry ? entry.t : Date.now());
+    $("sh-end").value = entry?.end ? toLocal(entry.end) : "";
+    $("sh-del").hidden = !entry;
+    syncChips(); showFields();
+    $("sheet").hidden = false; $("sheet-bg").hidden = false;
+    hideToast();
+  }
+  const closeSheet = () => { $("sheet").hidden = true; $("sheet-bg").hidden = true; editing = null; };
+  $("sh-close").onclick = closeSheet; $("sheet-bg").onclick = closeSheet;
+  $("sheet").onsubmit = (ev) => {
+    ev.preventDefault();
+    let t = fromLocal($("sh-t").value); if (!t) { toast(L.checkTime); return; }
+    const rawEnd = sheetType === "sleep" && $("sh-end").value ? fromLocal($("sh-end").value) : null;
+    const fx = T.fixEditTimes(t, rawEnd, Date.now());
+    if (fx.error) { toast(fx.error === "end_before_start" ? L.endBeforeStart : fx.error === "end_future" ? L.endFuture : L.noFuture); return; }
+    t = fx.t;
+    const prev = editing ? entries.find((x) => x.id === editing.id) : null, meta = T.keepMeta(prev);
+    let e;
+    if (sheetType === "feed") {
+      const kind = segVal("sh-kind");
+      e = T.cleanEntry({ ...meta, id: editing?.id, type: "feed", t, kind, ml: $("sh-ml").value, min: kind === "breast" ? $("sh-min").value : undefined });
+      if (!editing) { prefs.kind = kind; if (e && e.ml) prefs.ml = e.ml; savePrefs(); }
+    } else if (sheetType === "sleep") {
+      const end = fx.end;
+      if (end == null && T.openSleep(entries.filter((x) => x.id !== editing?.id))) { toast(L.alreadyOpen); return; }
+      e = T.cleanEntry({ ...meta, id: editing?.id, type: "sleep", t, end });
+    } else e = T.cleanEntry({ ...meta, id: editing?.id, type: "diaper", t, d: segVal("sh-d") });
+    if (!e) { toast(L.checkInput); return; }
+    const wasEdit = !!editing, undoSet = [{ id: e.id, prev: prev || null }];
+    entries = wasEdit && prev ? entries.map((x) => (x.id === e.id ? e : x)) : [e, ...entries.filter((x) => x.id !== e.id)];
+    // keep the edited record in view: if it moved to another day, jump the log + clock to that day
+    if (!T.dayEntries([e], viewDay, Date.now()).length) viewDay = T.startOfDay(e.t);
+    closeSheet(); save();
+    ga("tracker_log", { type: e.type === "sleep" ? (e.end ? "sleep" : "sleep_start") : e.type, method: wasEdit ? "edit" : "tap", ...(e.kind ? { kind: e.kind } : {}), ...(e.d ? { diaper: e.d } : {}), ...(e.ml ? { ml: e.ml } : {}) });
+    toast(wasEdit ? L.edited(L.describe(e)) : L.saved(L.describe(e)), [[L.undo, () => undoChanges(undoSet), "undo"]]);
+  };
+  $("sh-del").onclick = () => {
+    if (!editing) return; const id = editing.id, gone = entries.find((x) => x.id === id);
+    entries = entries.filter((x) => x.id !== id); closeSheet(); save();
+    toast(L.deleted, [[L.undo, () => undoChanges([{ id, prev: gone }]), "undo"]]);
+  };
+  $("timeline").addEventListener("click", (ev) => { const b = ev.target.closest(".tk-row"); if (!b) return; const e = entries.find((x) => x.id === b.dataset.id); if (e) openSheet(e.type, e); });
+
+  // ---------- voice / typed commands ----------
+  // Every phrase goes through T.parseCommands -> commitMany -> T.applyCommand -> save(): the same path as the buttons,
+  // so family sync, the summary, the log and the 24h clock all update. Saved at once; the toast offers undo / edit time.
+  let lastPhrase = { k: "", at: 0 }, hfOn = false, listening = false;
+  const hfStatus = (msg) => { $("mic-sub").textContent = msg; };
+  function handlePhrase(alts, method, conf) {
+    const now = Date.now(), hf = method === "handsfree";
+    let cmds = [], heard = alts[0] || "";
+    for (const a of alts) { cmds = T.parseCommands(a, now, LANG); if (cmds.length) { heard = a; break; } }
+    if (!cmds.length) {
+      if (method !== "text") ga("tracker_voice", { result: "unparsed", mode: method });
+      if (hf) { hfStatus(L.hfMissed(heard)); return; } // hands-free: ignore chatter quietly
+      toast(L.unparsed(heard), [], 6000);
+      return;
+    }
+    if (hf) { const k = T.phraseKey(heard); if (k === lastPhrase.k && now - lastPhrase.at < 8000) return; lastPhrase = { k, at: now }; }
+    if (method !== "text") ga("tracker_voice", { result: "parsed", action: cmds.map((c) => c.action).join("+"), mode: method });
+    if (cmds.length === 1 && T.needsDetail(cmds[0])) { // "분유" with no amount: ask instead of saving a blank feed
+      const c = cmds[0]; openSheet("feed", null); seg("sh-kind", c.kind); $("sh-t").value = toLocal(c.t); showFields(); toast(L.pickAmount, [], 4000);
+      return;
+    }
+    if (method !== "text" && T.isLowConfidence(conf)) { // unsure what was heard: confirm first, never auto-save
+      clearTimeout(pendingTimer);
+      toast(L.lowConf(cmds.map((c) => L.describeCmd(c, now)).join("  ·  ")), [[L.cancel, () => toast(L.cancelled, [], 1500), "undo"], [L.save, () => commitMany(cmds, method, 6000), "ok"]], 0);
+      return;
+    }
+    commitMany(cmds, method, 6000);
+  }
+  $("typed").onsubmit = (ev) => { ev.preventDefault(); const v = $("typed-in").value.trim(); if (!v) return; $("typed-in").value = ""; handlePhrase([v], "text"); };
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let startMic = () => false; // set below when speech is supported; used by ?shortcut=voice
+  const inApp = /KAKAOTALK|Instagram|FBAN|FBAV|FB_IAB|NAVER\(inapp|Line\/|DaumApps|everytimeApp|Threads|Barcelona/i.test(navigator.userAgent);
+  const hint = (msg) => { $("mic-hint").textContent = msg; $("mic-hint").hidden = !msg; };
+  const mic = $("mic");
+  const EXAMPLES = L.examples;
+  let exI = 0, micBusy = false;
+  const reduceMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (SR) setInterval(() => { if (micBusy || document.hidden) return; exI = (exI + 1) % EXAMPLES.length; const el = $("mic-sub"); el.classList.add("fade"); setTimeout(() => { if (!micBusy) el.textContent = EXAMPLES[exI]; el.classList.remove("fade"); }, reduceMotion ? 0 : 200); }, 2600);
+  // Speak-then-tap panel is closed on load. 🎤 말로 기록 (FAB) or an explicit ?shortcut=voice opens it; it hides again when listening / hands-free ends.
+  const voiceBox = $("voice-box");
+  const COACH = T.STORAGE_KEY + "_coach";
+  const hideCoach = () => { $("coach").hidden = true; try { localStorage.setItem(COACH, "1"); } catch {} };
+  $("coach-x").onclick = hideCoach; mic.addEventListener("click", hideCoach);
+  const fab = $("fab");
+  let micInView = false;
+  const syncFab = () => { fab.hidden = !voiceBox.hidden && micInView; };
+  let voiceHold = false; // keep the panel open after a mic-permission / device error so the hint stays readable
+  const showVoice = () => { voiceBox.hidden = false; syncFab(); };
+  const hideVoice = () => {
+    if (hfOn || listening || voiceHold) return;
+    voiceBox.hidden = true;
+    $("coach").hidden = true;
+    syncFab();
+  };
+  if (!SR) { fab.classList.add("off"); fab.querySelector("span").textContent = "⌨️"; fab.querySelector("b").textContent = L.fabType; fab.setAttribute("aria-label", L.fabTypeAria); }
+  fab.onclick = () => { showVoice(); if (SR) { mic.click(); } else { $("typed-wrap").open = true; $("typed-in").scrollIntoView({ block: "center" }); $("typed-in").focus(); } ga("tracker_voice", { result: "fab_click" }); };
+  if ("IntersectionObserver" in window) new IntersectionObserver(([en]) => { micInView = en.isIntersecting; syncFab(); }, { rootMargin: "-56px 0px 0px 0px" }).observe(mic);
+  syncFab();
+  if (!SR) {
+    mic.disabled = true; mic.classList.add("off"); mic.querySelector(".tk-mic-go").textContent = L.notSupported;
+    $("mic-label").textContent = L.micUnsupported;
+    $("mic-sub").textContent = L.micUnsupportedSub;
+    hint(inApp ? L.hintInApp : L.hintBrowsers);
+    $("typed-wrap").open = true;
+    showVoice();
+    ga("tracker_voice", { result: "unsupported", in_app: inApp });
+  } else {
+    if (inApp) hint(L.hintInAppMaybe);
+    $("hf-wrap").hidden = false;
+    let rec = null, hfLastHeard = 0, hfTimer = 0, wakeLock = null, autoStart = false, autoTimer = 0;
+    // auto-start (?shortcut=voice) didn't get the mic: one huge "tap and speak" button (the tap is the user gesture browsers want)
+    const autoFailed = (why) => {
+      if (!autoStart) return; autoStart = false; clearTimeout(autoTimer);
+      if (rec) { const old = rec; rec = null; try { old.abort(); } catch {} } // drop a session stuck waiting for a tap, so the tap starts a fresh one
+      listening = false; setUi(); showGate(why);
+    };
+    let HF_IDLE = 120000; try { HF_IDLE = Number(localStorage.getItem(T.STORAGE_KEY + "_hfidle")) || HF_IDLE; } catch {}
+    const setUi = () => {
+      const on = listening || hfOn; micBusy = on;
+      mic.classList.toggle("live", listening && !hfOn); mic.classList.toggle("hf", hfOn); fab.classList.toggle("live", on);
+      $("mic-label").textContent = hfOn ? L.hfListening : listening ? L.listening : L.micLabel;
+      mic.querySelector(".tk-mic-go").textContent = hfOn ? L.hfStop : listening ? L.tapStop : L.tapSpeak;
+      if (!on) $("mic-sub").textContent = EXAMPLES[exI];
+      $("hf-toggle").checked = hfOn;
+      if (on) showVoice(); else hideVoice();
+    };
+    const wake = async () => { try { if (navigator.wakeLock && !wakeLock) { wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release", () => { wakeLock = null; }); } } catch {} };
+    const unwake = () => { try { wakeLock && wakeLock.release(); } catch {} wakeLock = null; };
+    function startRec(continuous) {
+      const r = new SR(); rec = r;
+      r.lang = L.srLang; r.interimResults = true; r.maxAlternatives = 3; r.continuous = continuous;
+      const handled = new Set();
+      r.onstart = r.onaudiostart = () => { if (autoStart) { clearTimeout(autoTimer); hideGate(); } };
+      r.onresult = (ev) => {
+        if (hfOn) hfLastHeard = Date.now();
+        for (let i = ev.resultIndex || 0; i < ev.results.length; i++) {
+          const res = ev.results[i]; if (handled.has(i)) continue;
+          $("mic-sub").textContent = `“${res[0].transcript}”`;
+          if (res.isFinal) { handled.add(i); if (autoStart) { autoStart = false; clearTimeout(autoTimer); hideBanner(); } const alts = []; for (let j = 0; j < res.length; j++) alts.push(res[j].transcript); handlePhrase(alts, hfOn ? "handsfree" : "voice", res[0].confidence); }
+        }
+      };
+      r.onerror = (ev) => {
+        const code = ev.error;
+        ga("tracker_voice", { result: "error", error: code, mode: hfOn ? "handsfree" : autoStart ? "auto" : "tap" });
+        // auto-start from ?shortcut=voice can be refused (no tap yet / no permission): keep the banner's "tap to speak" button instead of an error
+        if (autoStart && ["not-allowed", "service-not-allowed", "no-speech", "aborted"].includes(code)) { autoFailed(code); return; }
+        if (code === "not-allowed" || code === "service-not-allowed") { hint(L.micDenied(inApp)); voiceHold = true; hfStop(false); }
+        else if (code === "no-speech") { if (!hfOn) toast(L.noSpeech, [], 2500); }
+        else if (code === "network") { hint(L.needNet); voiceHold = true; hfStop(false); }
+        else if (code === "audio-capture") { hint(L.noMic); voiceHold = true; hfStop(false); }
+        else if (code !== "aborted" && !hfOn) toast(L.srFail, [], 3500);
+      };
+      r.onend = () => {
+        if (rec !== r) return;
+        listening = false;
+        if (autoStart) autoFailed("ended"); // the auto session closed without hearing a phrase
+        if (hfOn) {
+          if (Date.now() - hfLastHeard > HF_IDLE) { hfStop(true); return; }
+          if (!document.hidden) setTimeout(() => { if (hfOn && !listening && rec === r && !document.hidden) startRec(true); }, 250); // browsers end sessions on silence: keep it going
+        }
+        setUi();
+      };
+      try { r.start(); listening = true; } catch { listening = false; if (autoStart) { autoFailed("start_threw"); return; } hint(L.srStartFail); voiceHold = true; if (hfOn) hfStop(false); }
+      setUi();
+    }
+    function hfStart() {
+      if (hfOn) return;
+      hfOn = true; hfLastHeard = Date.now(); lastPhrase = { k: "", at: 0 };
+      if (rec) { const old = rec; rec = null; try { old.abort(); } catch {} }
+      listening = false; startRec(true); wake(); $("mic-sub").textContent = L.hfTip;
+      clearInterval(hfTimer); hfTimer = setInterval(() => { if (hfOn && Date.now() - hfLastHeard > HF_IDLE) hfStop(true); }, Math.min(5000, HF_IDLE / 4));
+      toast(L.hfOnToast, [], 3500); ga("tracker_voice", { result: "handsfree_on" });
+    }
+    function hfStop(idle) {
+      if (!hfOn) { setUi(); return; }
+      hfOn = false; clearInterval(hfTimer); unwake();
+      if (rec) { const old = rec; rec = null; try { old.abort(); } catch {} }
+      listening = false; setUi();
+      if (idle) toast(L.hfIdleOff, [], 5000);
+      ga("tracker_voice", { result: idle ? "handsfree_idle_off" : "handsfree_off" });
+    }
+    startMic = (auto = false) => {
+      if (hfOn || listening) return false;
+      autoStart = auto; clearTimeout(autoTimer);
+      if (auto) autoTimer = setTimeout(() => autoFailed("no_start"), 2500); // no onstart: the browser is silently waiting for a tap
+      startRec(false);
+      if (listening) ga("tracker_voice", { result: "start", ...(auto ? { auto: true } : {}) });
+      return listening;
+    };
+    mic.onclick = () => {
+      if (viewOnly()) { toast(L.fam.viewOnlyToast, [], 2500); return; }
+      autoStart = false; clearTimeout(autoTimer); hideGate();
+      if (hfOn) { hfStop(false); return; }
+      if (listening) { try { rec && rec.stop(); } catch {} return; }
+      startRec(false); if (listening) ga("tracker_voice", { result: "start" });
+    };
+    $("hf-toggle").onchange = (e) => (e.target.checked ? hfStart() : hfStop(false));
+    document.addEventListener("visibilitychange", () => {
+      if (!hfOn) return;
+      if (document.hidden) { if (rec) { const old = rec; rec = null; try { old.abort(); } catch {} } listening = false; setUi(); }
+      else { hfLastHeard = Date.now(); if (!listening) startRec(true); wake(); }
+    });
+  }
+
+  // ---------- data ----------
+  $("d-export").onclick = () => {
+    const blob = new Blob([T.exportJson(entries)], { type: "application/json" });
+    const a = document.createElement("a"); const d = new Date();
+    a.href = URL.createObjectURL(blob); a.download = `baby-log-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.json`;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    ga("tracker_data", { action: "export", count: entries.length });
+    toast(L.exported(entries.length), [], 2500);
+  };
+  $("d-import").onchange = async (ev) => {
+    const f = ev.target.files?.[0]; ev.target.value = ""; if (!f) return;
+    try { const r = T.importJson(await f.text(), entries); entries = r.entries; save(); ga("tracker_data", { action: "import", count: r.added }); toast(L.imported(r.added), [], 3000); }
+    catch (e) { toast(L.importFail(e), [], 4000); }
+  };
+  $("d-clear").onclick = () => {
+    if (!entries.length) { toast(L.nothingToClear, [], 2000); return; }
+    if (!confirm(L.confirmClear(entries.length) + (Sync && Sync.joined ? L.fam.clearShared : ""))) return;
+    entries = []; save(); ga("tracker_data", { action: "clear" }); toast(L.cleared, [], 2500);
+  };
+
+
+  // ---------- family sharing ----------
+  const F = L.fam;
+  const famErr = (e) => e.code === "bad_move" ? L.move.badMove : e.code === "expired_move" ? L.move.expiredMove : e.code === "already" ? L.move.alreadyJoined : e.code === "pending" ? L.move.pending : e.code === "bad_code" ? F.badCode : e.code === "unknown_code" ? F.unknownCode : e.status === 429 ? F.rateLimited : e.status === 503 ? F.unavailable : !e.status ? F.netFail : F.unavailable;
+  let famState = null;
+  const inviteUrl = (code) => `${location.origin}${location.pathname}#join=${code}`;
+  const famView = { for: null, code: null, busy: null };
+  function loadViewCode() {
+    if (!Sync || !Sync.joined || famView.busy) return famView.busy;
+    const forCode = Sync.code;
+    famView.busy = Sync.viewCode().then((v) => { famView.for = forCode; famView.code = v; if (Sync.code === forCode && !$("fam-on").hidden) $("fam-code").textContent = T.fmtFamilyCode(v); return v; })
+      .catch(() => null).finally(() => { famView.busy = null; });
+    return famView.busy;
+  }
+  const shareCode = async () => (Sync.view ? Sync.code : (famView.for === Sync.code && famView.code) || await Sync.viewCode());
+  function renderFam(st) {
+    if (window.__mvHint) setTimeout(window.__mvHint, 0);
+    famState = st; famOn = st.joined;
+    const pill = $("fam-status");
+    pill.hidden = !st.joined && st.status !== "revoked";
+    pill.textContent = (st.status === "synced" ? "● " : "") + (F.st[st.status] || "");
+    pill.dataset.s = st.status;
+    $("fam-btn").classList.toggle("on", st.joined);
+    document.body.classList.toggle("tk-view", !!((st.joined && st.view) || (!st.joined && st.viewGone)));
+    document.body.classList.toggle("tk-viewgone", !!(!st.joined && st.viewGone));
+    const cutOn = !!(!st.joined && st.cut && !st.viewGone); // an editing phone cut off by 새 코드: say how to reconnect (not "create")
+    $("cut-note").hidden = !cutOn; $("fam-cut").hidden = !cutOn;
+    if (cutOn) { $("cut-tx").textContent = F.cutNote; $("cut-go").textContent = F.cutGo; $("fam-cut").textContent = F.cutNote; }
+    $("fam-off").hidden = st.joined; $("fam-on").hidden = !st.joined;
+    $("fam-nick-save").hidden = !st.joined;
+    if (document.activeElement !== $("fam-nick")) $("fam-nick").value = st.nick || "";
+    if (st.joined) {
+      // the code shown and shared is always the VIEW-ONLY code; the full family code stays on the devices that already have it
+      if (st.view) $("fam-code").textContent = T.fmtFamilyCode(st.code);
+      else if (famView.for === st.code && famView.code) $("fam-code").textContent = T.fmtFamilyCode(famView.code);
+      else { $("fam-code").textContent = F.viewLoading; loadViewCode(); }
+      const now = Date.now();
+      $("fam-members").innerHTML = (st.members || []).map((m) => `<li><b>${esc(m.nick || "—")}</b>${m.dev === st.dev.slice(-4) ? ` <i>(${esc(F.you)})</i>` : ""}${m.view ? ` <em class="tk-view-tag">👀 ${esc(F.viewTag)}</em>` : ""}<span>${esc(F.ago(now - m.lastSeen))}</span></li>`).join("");
+    }
+    refreshPushUi();
+    if (st.status === "revoked" && !st.joined && renderFam.wasJoined) toast(F.revokedToast, [], 6000);
+    renderFam.wasJoined = st.joined;
+    if (typeof famBannerUpdate === "function") famBannerUpdate(st);
+    render();
+  }
+  Sync = createSync({
+    getEntries: () => entries,
+    setEntries: (list) => { entries = list; lastSaved = list; persist(); render(); },
+    onState: renderFam,
+  });
+  $("fam-share").hidden = !navigator.share;
+  const Push = createPush({ api: "/api/family/", getCode: () => Sync.code, getDev: () => Sync.dev, lang: LANG });
+  const appState = () => ({
+    platform: detectPlatform(navigator.userAgent, navigator.maxTouchPoints || 0),
+    standalone: isStandalone(), installed: wasInstalled(), canPrompt: canPrompt(),
+    pushOn, joined: !!(Sync && Sync.joined),
+  });
+  let pushOn = false, pushUiJoined = null;
+  function paintPushBtn(on) {
+    if (on !== undefined) pushOn = !!on;
+    const btn = $("fam-push-btn"); if (!btn) return;
+    const mode = appPushMode(appState());
+    btn.textContent = mode === "on" ? F.pushOnBtn : mode === "install" ? F.pushInstallBtn : F.pushBtn;
+    btn.dataset.mode = mode;
+    btn.classList.toggle("on", mode === "on");
+    btn.setAttribute("aria-pressed", mode === "on" ? "true" : "false");
+  }
+  addEventListener("nb-installable", () => paintPushBtn());
+  addEventListener("nb-installed", () => paintPushBtn());
+  async function refreshPushUi(opts = {}) {
+    const btn = $("fam-push-btn"); if (!btn) return;
+    if (!(Sync && Sync.joined)) {
+      pushUiJoined = false;
+      paintPushBtn(false);
+      return;
+    }
+    if (!opts.force && pushUiJoined === true) { paintPushBtn(); return; }
+    pushUiJoined = true;
+    paintPushBtn();
+    const st = await Push.status();
+    if (!Sync.joined) { paintPushBtn(false); return; }
+    paintPushBtn(!!st.subscribed && (!!st.records || !!st.photos));
+  }
+  async function onPushBtn() {
+    let action = appPushAction(appState());
+    if (action === "off") {
+      if (!confirm(F.pushOffConfirm)) return;
+      await Push.disable();
+      paintPushBtn(false);
+      toast(F.pushOff, [], 2000);
+      return;
+    }
+    if (action === "ios-hint") { toast(F.pushIos, [], 7000); ga("tracker_app_push", { step: "ios_hint" }); return; }
+    if (action === "open-chrome") { location.href = ({ en: "/en", pt: "/pt-br" }[LANG] || "") + "/tracker/app"; return; }
+    if (action === "prompt") {
+      const r = await promptInstall();
+      ga("tracker_app_push", { step: "install", outcome: r });
+      paintPushBtn();
+      if (r === "dismissed") return;
+      if (r === "accepted") toast(F.installedToast, [], 2500);
+      action = Sync.joined ? "subscribe" : "need-family";
+    }
+    if (action === "need-family") {
+      openFam();
+      toast(F.pushNeed, [], 3000);
+      return;
+    }
+    try {
+      await Push.enable({ records: true, photos: true });
+      paintPushBtn(true);
+      ga("tracker_app_push", { step: "subscribe" });
+      toast(F.pushOn, [], 2500);
+    } catch (e) {
+      paintPushBtn(false);
+      toast(e.code === "denied" ? F.pushDenied : e.code === "unsupported" ? F.pushUnsupported : famErr(e), [], 4000);
+    }
+  }
+  const openFam = () => { $("fam-sheet").hidden = false; $("fam-bg").hidden = false; hideToast(); if (Sync.joined) { Sync.sync(); refreshPushUi({ force: true }); } };
+  const closeFam = () => { $("fam-sheet").hidden = true; $("fam-bg").hidden = true; $("fam-invite").hidden = true; $("fam-sheet").classList.remove("tk-invited"); };
+  $("cut-go").onclick = () => openMove(true);
+  $("viewgone-unlock").onclick = () => { if (confirm($("viewgone-unlock").dataset.ask)) { Sync.unlockLocal(); render(); } };
+  // after accepting an invite: close the family sheet and land on the log itself (records already pulled by Sync.join)
+  const goTracker = () => { closeFam(); render(); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  $("fam-btn").onclick = openFam; $("fam-push-btn").onclick = () => busyBtn($("fam-push-btn"), onPushBtn); $("fam-close").onclick = closeFam; $("fam-bg").onclick = closeFam;
+  const busyBtn = async (btn, fn) => { btn.disabled = true; try { await fn(); } catch (e) { toast(famErr(e), [], 4000); } finally { btn.disabled = false; } };
+  $("fam-nick").addEventListener("change", () => { if (!Sync.joined) Sync.setNick($("fam-nick").value); });
+  $("fam-nick-save").onclick = () => { Sync.setNick($("fam-nick").value); toast("✓", [], 1000); };
+  $("fam-create").onclick = () => { if (Sync.cut && !confirm(F.cutCreateAsk)) return; busyBtn($("fam-create"), async () => {
+    Sync.setNick($("fam-nick").value); await Sync.create(); ga("tracker_family", { action: "create" }); toast(F.created, [], 3500);
+  }); };
+  $("fam-join-form").onsubmit = (ev) => { ev.preventDefault(); busyBtn($("fam-join"), async () => {
+    const j = T.joinInput($("fam-join-in").value); if (!j) { const e = new Error("bad_code"); e.code = "bad_code"; throw e; }
+    Sync.setNick($("fam-nick").value); if (j.move) await Sync.claim(j.move); else await Sync.join(j.code); $("fam-join-in").value = ""; $("fam-invite").hidden = true;
+    ga("tracker_family", { action: j.move ? "move_claim" : Sync.view ? "join_view" : "join" }); goTracker(); toast(j.move ? L.move.claimed(entries.length) : Sync.view ? F.joinedView : F.joined, [], 3000);
+  }); };
+  $("fam-copy").onclick = async () => {
+    let link; try { link = inviteUrl(await shareCode()); } catch (e) { toast(famErr(e), [], 3000); return; }
+    try { await navigator.clipboard.writeText(link); toast(F.copied, [], 2000); }
+    catch { const r = document.createRange(); r.selectNodeContents($("fam-code")); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); toast(F.copyFail, [], 3000); }
+    ga("tracker_family", { action: "copy_link" });
+  };
+  $("fam-share").onclick = async () => { try { const url = inviteUrl(await shareCode()); await navigator.share({ title: F.shareTitle, text: F.shareText, url }); ga("tracker_family", { action: "share_link" }); } catch {} };
+  $("fam-edit-go").onclick = () => { closeFam(); openMove(false); ga("tracker_family", { action: "edit_invite" }); };
+  $("fam-regen").onclick = () => { if (!confirm(F.regenConfirm)) return; busyBtn($("fam-regen"), async () => { await Sync.regen(); ga("tracker_family", { action: "regen" }); toast(F.regenDone, [], 3500); }); };
+  $("fam-leave").onclick = () => { if (!confirm(Sync.view ? F.viewLeaveConfirm : F.leaveConfirm)) return; busyBtn($("fam-leave"), async () => { ga("tracker_family", { action: "leave" }); try { await Push.disable(); } catch {} renderFam._pushOnce = false; await Sync.leave(); toast(F.left, [], 3000); if ($("fam-join-in").value && !$("fam-invite").hidden) $("fam-invite").textContent = F.invited; }); };
+  // ---------- move the log to another browser / app ----------
+  // Each browser, in-app webview and (on iPhone) the home-screen app has its own storage, so opening the same /tracker
+  // link elsewhere starts empty. A one-time move code (30 min) lets the new place join this log as another device;
+  // the family code itself never goes into a URL.
+  const MV = L.move;
+  const mvStartTx = $("mv-start").textContent;
+  let mvTimer = 0, mvCur = null;
+  const mvErr = (t) => { $("mv-err").textContent = t || ""; $("mv-err").hidden = !t; };
+  const mvLink = (m) => T.moveUrl(location.origin, location.pathname, m);
+  function mvShow(r) {
+    mvCur = r; $("mv-out").hidden = false; $("mv-start").hidden = true; $("mv-q").hidden = true; mvErr("");
+    $("mv-code").textContent = T.fmtMoveCode(r.move);
+    const q = qrcode(0, "M"); q.addData(mvLink(r.move)); q.make(); $("mv-qr").innerHTML = q.createSvgTag({ cellSize: 3, margin: 2, scalable: true });
+    const inAndroidApp = detectPlatform(navigator.userAgent, navigator.maxTouchPoints) === "inapp-android";
+    $("mv-chrome").hidden = !inAndroidApp; // e.g. KakaoTalk's browser -> hand the code straight to Chrome
+    if (inAndroidApp) $("mv-chrome").href = externalOpenUrl(location.origin + location.pathname + "?move=" + r.move);
+    const tick = () => {
+      const m = Math.ceil((r.expires - Date.now()) / 60000); $("mv-left").textContent = MV.left(m);
+      if (m <= 0) { clearInterval(mvTimer); mvCur = null; $("mv-out").hidden = true; mvErr(MV.expired); $("mv-start").textContent = MV.again; $("mv-start").hidden = false; }
+    };
+    tick(); clearInterval(mvTimer); mvTimer = setInterval(tick, 15000);
+  }
+  async function mvMake() {
+    mvErr(""); $("mv-start").hidden = true; $("mv-out").hidden = true; $("mv-q").textContent = MV.making; $("mv-q").hidden = false;
+    try {
+      if (!Sync.joined) { Sync.setNick($("fam-nick").value); await Sync.create(); ga("tracker_family", { action: "create_for_move" }); }
+      mvShow(await Sync.moveCode()); ga("tracker_family", { action: "move_code" });
+    } catch (e) { $("mv-q").hidden = true; mvErr(famErr(e)); $("mv-start").textContent = mvStartTx; $("mv-start").hidden = false; }
+  }
+  function openMove(focusIn) {
+    $("mv-sheet").hidden = false; $("mv-bg").hidden = false; hideToast(); mvErr("");
+    const has = entries.length > 0;
+    $("mv-send").hidden = !Sync.joined && !has; // nothing here to send: only show "bring a log here"
+    if (mvCur && mvCur.expires > Date.now() + 60000) mvShow(mvCur);
+    else if (Sync.joined) mvMake();
+    else if (has) { $("mv-out").hidden = true; $("mv-q").textContent = MV.startQ; $("mv-q").hidden = false; $("mv-start").textContent = mvStartTx; $("mv-start").hidden = false; }
+    if (focusIn || $("mv-send").hidden) setTimeout(() => $("mv-in").focus(), 60);
+  }
+  const closeMove = () => { $("mv-sheet").hidden = true; $("mv-bg").hidden = true; };
+  async function mvClaim(input) {
+    const j = T.joinInput(input);
+    if (!j) { const e = new Error("bad_move"); e.code = "bad_move"; throw e; }
+    if (Sync.joined) {
+      if (j.code && j.code === Sync.code) { closeMove(); toast(MV.sameFam, [], 3000); return; }
+      if (!j.move) { const e = new Error("already"); e.code = "already"; throw e; }
+      // a move code while already in a family (e.g. two phones ended up in two families after 새 코드): offer to switch
+      const chk = await Sync.checkMove(j.move); // throws expired_move / bad_move before asking anything
+      if (chk.same) { $("mv-in").value = ""; closeMove(); toast(MV.sameFam, [], 3000); return; }
+      if (!confirm(MV.switchAsk(Sync.memberCount || 1))) return;
+      Sync.setNick($("fam-nick").value); await Sync.switchClaim(j.move); ga("tracker_family", { action: "move_switch" });
+      $("mv-in").value = ""; closeMove(); goTracker(); toast(MV.switched(entries.length), [], 5000); return;
+    }
+    Sync.setNick($("fam-nick").value);
+    if (j.move) await Sync.claim(j.move); else await Sync.join(j.code);
+    ga("tracker_family", { action: j.move ? "move_claim" : "join" });
+    $("mv-in").value = ""; closeMove(); goTracker(); toast(j.move ? MV.claimed(entries.length) : F.joined, [], 4000);
+  }
+  $("mv-btn").onclick = () => openMove(false);
+  $("mv-close").onclick = closeMove; $("mv-bg").onclick = closeMove;
+  $("mv-start").onclick = mvMake;
+  $("mv-form").onsubmit = (ev) => { ev.preventDefault(); busyBtn($("mv-go"), () => mvClaim($("mv-in").value)); };
+  $("mv-copy").onclick = async () => {
+    if (!mvCur) return;
+    try { await navigator.clipboard.writeText(mvLink(mvCur.move)); toast(MV.copied, [], 2500); }
+    catch { const r = document.createRange(); r.selectNodeContents($("mv-code")); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); toast(F.copyFail, [], 3000); }
+    ga("tracker_family", { action: "move_copy" });
+  };
+  $("mv-share").hidden = !navigator.share;
+  $("mv-share").onclick = async () => { if (mvCur) try { await navigator.share({ title: MV.shareTitle, text: MV.shareText, url: mvLink(mvCur.move) }); ga("tracker_family", { action: "move_share" }); } catch {} };
+  // "used it somewhere else?" — shown while this place has no log yet (fresh browser, iPhone home-screen app, ...)
+  $("mv-hint-tx").textContent = MV.hint; $("mv-hint-sub").textContent = MV.hintSub; $("mv-hint-go").textContent = MV.hintGo;
+  $("mv-hint-go").onclick = () => openMove(true);
+  const mvHintOff = () => { try { return !!localStorage.getItem(T.STORAGE_KEY + "_mvhint_x"); } catch { return false; } };
+  window.__mvHint = () => { $("mv-hint").hidden = Sync.joined || entries.length > 0 || mvHintOff(); };
+  $("mv-hint-x").onclick = () => { try { localStorage.setItem(T.STORAGE_KEY + "_mvhint_x", "1"); } catch {} $("mv-hint").hidden = true; };
+  window.__mvHint();
+  // ---------- big "tap and speak" gate (fallback only when an explicit ?shortcut=voice auto-listen did not get the mic) ----------
+  function showGate(why) {
+    if (!SR || viewOnly()) return;
+    $("voice-gate").hidden = false; document.body.classList.add("tk-gated");
+    if (!$("say-banner").hidden && $("say-banner").dataset.tone === "info") hideBanner();
+    ga("tracker_voice", { result: "gate", why: why || "" });
+    setTimeout(() => $("gate-go").focus(), 30);
+  }
+  function hideGate() { if ($("voice-gate").hidden) return; $("voice-gate").hidden = true; document.body.classList.remove("tk-gated"); hideVoice(); }
+  $("gate-go").onclick = () => { $("voice-gate").hidden = true; document.body.classList.remove("tk-gated"); hideBanner(); showVoice(); mic.click(); };
+  $("gate-x").onclick = hideGate;
+  // ---------- URL commands: /tracker?say=분유%20100 (Bixby) and /tracker?shortcut=voice (explicit listen shortcut) ----------
+  // The URL carries only the action; the record goes into this browser's own log (and its family, if sharing is on).
+  // ?voice=1 is a leftover from the pre-11/14 PWA start_url (/tracker?voice=1). Installed Android WebAPKs keep that
+  // start_url, so treating it as "open the mic" would show the card every time the app icon is tapped. Strip it, ignore it.
+  const S = L.say;
+  const qp = new URLSearchParams(location.search);
+  const sayRaw = qp.get("say"), shortcutVoice = qp.get("shortcut") === "voice", staleVoice = qp.get("voice");
+  if (sayRaw != null || staleVoice != null || qp.has("shortcut")) { // drop the command so a reload / back can't fire it twice
+    qp.delete("say"); qp.delete("voice"); qp.delete("shortcut"); const q = qp.toString();
+    history.replaceState(null, "", location.pathname + (q ? "?" + q : "") + location.hash);
+  }
+  var famWatch = false; // var: famBannerUpdate can run (via renderFam) before this line
+  function banner(text, sub, actions = [], tone = "ok") {
+    $("say-tx").textContent = text; $("say-sub").textContent = sub || ""; $("say-sub").hidden = !sub;
+    const b = $("say-banner"); b.dataset.tone = tone;
+    const act = $("say-act"); act.innerHTML = "";
+    for (const [label, fn, cls] of actions) { const x = document.createElement("button"); x.type = "button"; x.textContent = label; if (cls) x.className = cls; x.onclick = fn; act.appendChild(x); }
+    b.hidden = false;
+  }
+  function hideBanner() { $("say-banner").hidden = true; famWatch = false; }
+  $("say-x").onclick = hideBanner;
+  const readLastSay = () => { try { return JSON.parse(localStorage.getItem(T.SAY_KEY) || "null"); } catch { return null; } };
+  const famLine = () => !Sync.joined ? S.famOff : navigator.onLine === false ? S.famOffline : S.famSending;
+  function famBannerUpdate(st) {
+    if (!famWatch || $("say-banner").hidden) return;
+    if (!st.joined) { $("say-sub").textContent = S.famOff; return; }
+    if (st.status === "synced" && !st.pending) { $("say-sub").textContent = S.famSent; $("say-sub").dataset.s = "sent"; famWatch = false; }
+    else if (st.status === "offline") $("say-sub").textContent = S.famOffline;
+  }
+  function sayCommit(cmds, text) {
+    if (viewOnly()) { banner(L.fam.viewOnlyToast, "", [], "warn"); return false; }
+    const { list, done, changes, note } = applyCmds(cmds);
+    if (!done.length) { banner(S.notSaved(note || L.cantLog), "", [], "warn"); ga("tracker_say", { result: "error" }); return false; }
+    entries = list; save();
+    try { localStorage.setItem(T.SAY_KEY, JSON.stringify({ k: T.sayKey(text), at: Date.now() })); } catch {}
+    for (const [c] of done) ga("tracker_log", { type: c.action === "sleep" ? "sleep" : c.action, method: "url", ...(c.kind ? { kind: c.kind } : {}), ...(c.d ? { diaper: c.d } : {}), ...(c.ml ? { ml: c.ml } : {}) });
+    ga("tracker_say", { result: "saved", action: done.map(([c]) => c.action).join("+") });
+    $("say-sub").dataset.s = "";
+    const last = done[done.length - 1];
+    banner(S.done(done.map(([c]) => S.label(c)).join(" · "), L.clock(last[0].action === "sleep" ? last[0].end : last[0].t)) + (note ? ` (${note})` : ""), famLine(), [
+      [S.undo, () => { undoChanges(changes); try { localStorage.removeItem(T.SAY_KEY); } catch {} ga("tracker_say", { result: "undone" }); famWatch = false; banner(S.undone, "", [], "muted"); }, "undo"],
+      [S.edit, () => { const e = entries.find((x) => x.id === last[1].id); if (e) openSheet(e.type, e); }],
+    ], "ok");
+    famWatch = true;
+    if (Sync.joined) Sync.sync(); // push right away instead of waiting for the debounce / 20 s poll
+    return true;
+  }
+  if (sayRaw != null) {
+    const text = T.cleanSay(sayRaw), now = Date.now();
+    const cmds = text ? T.parseCommands(text, now, LANG) : [];
+    if (!cmds.length) {
+      banner(S.unparsed(text || "?"), "", [], "warn"); $("typed-wrap").open = true; $("typed-in").value = text;
+      ga("tracker_say", { result: "unparsed" });
+    } else if (cmds.length === 1 && T.needsDetail(cmds[0])) {
+      banner(S.needDetail(S.label(cmds[0])), "", [], "warn"); openSheet("feed", null); seg("sh-kind", cmds[0].kind); showFields();
+      ga("tracker_say", { result: "need_detail" });
+    } else if (!applyCmds(cmds).done.length) { // e.g. "깼어" with no running sleep: say why instead of asking about duplicates
+      sayCommit(cmds, text);
+    } else if (T.isRecentSay(readLastSay(), text, now)) {
+      const label = cmds.map((c) => S.label(c)).join(" · ");
+      banner(S.dupQ(label), "", [[S.dupYes, () => { sayCommit(T.parseCommands(text, Date.now(), LANG), text); }, "ok"], [S.dupNo, () => { banner(S.dupSkipped, "", [], "muted"); ga("tracker_say", { result: "dup_skipped" }); }]], "warn");
+      ga("tracker_say", { result: "dup_asked" });
+    } else sayCommit(cmds, text);
+  } else if (shortcutVoice && !viewOnly()) {
+    ga("tracker_say", { result: "voice_open" });
+    if (SR) { showVoice(); banner(S.voiceAsk, "", [[S.voiceGo, () => { hideBanner(); mic.click(); }, "ok"]], "info"); startMic(true); }
+    else { showVoice(); banner(S.voiceNoSr, "", [], "warn"); $("typed-wrap").open = true; $("typed-in").focus(); }
+  }
+  // stale ?voice=1 (old PWA start_url): already stripped, panel stays closed
+
+  // move link: /tracker#move=CODE (QR / copied link) or ?move=CODE (Android "open in Chrome" hand-off). Strip it right away.
+  function mvFromUrl() {
+    const qs = new URLSearchParams(location.search);
+    const hm = location.hash.match(/^#move=([0-9A-Za-z-]+)/);
+    const m = qs.get("move") || (hm && hm[1]);
+    const openOnly = location.hash === "#openmove";
+    if (!m && !openOnly) return;
+    qs.delete("move"); const rest = qs.toString();
+    history.replaceState(null, "", location.pathname + (rest ? "?" + rest : "") + (hm || openOnly ? "" : location.hash));
+    if (openOnly) { openMove(false); return; }
+    if (Sync.joined) { openMove(true); $("mv-in").value = T.fmtMoveCode(m) || m; mvClaim(m).catch((e) => toast(famErr(e), [], 6000)); return; } // asks before switching
+    toast(MV.claiming, [], 15000);
+    mvClaim(m).catch((e) => { hideToast(); openMove(true); $("mv-in").value = T.fmtMoveCode(m) || m; toast(famErr(e), [], 6000); });
+  }
+  mvFromUrl();
+  addEventListener("hashchange", mvFromUrl);
+  // invite link: /tracker#join=CODE (old: ?join=CODE). A VIEW-ONLY code joins by itself (nothing of this device is shared, and
+  // a closed sheet must not leave the person on an editable log that the family never sees); a full code still needs a tap.
+  function joinFromUrl() {
+    const joinHash = location.hash.match(/^#join=([0-9A-Za-z-]+)/);
+    const joinParam = new URLSearchParams(location.search).get("join") || (joinHash && joinHash[1]);
+    if (!joinParam) return;
+    history.replaceState(null, "", location.pathname + (joinHash ? "" : location.hash));
+    const c = T.codeFromInput(joinParam);
+    if (!c) { toast(F.badCode, [], 4000); return; }
+    if (c === Sync.code) { toast(F.alreadyIn, [], 3500); return; } // already a member: just stay on the log
+    const showInvite = (view) => { $("fam-join-in").value = T.fmtFamilyCode(c); $("fam-invite").textContent = Sync.joined ? F.invitedOther : view ? F.invitedView : F.invited; $("fam-invite").hidden = false; $("fam-sheet").classList.toggle("tk-invited", !Sync.joined); openFam(); };
+    if (Sync.joined) { showInvite(false); return; }
+    Sync.peek(c).then(async (r) => {
+      if (!r || r.role !== "view") { showInvite(false); return; }
+      const wasCut = Sync.cut;
+      try { await Sync.join(c); ga("tracker_family", { action: "join_view", auto: 1 }); goTracker(); toast(wasCut ? F.joinedViewCut : F.joinedView, [], wasCut ? 9000 : 5000); render(); }
+      catch { showInvite(true); }
+    }, () => showInvite(false));
+  }
+  joinFromUrl();
+  addEventListener("hashchange", () => { if (/^#join=/.test(location.hash)) joinFromUrl(); });
+  // polling while visible + on focus / back online
+  setInterval(() => { if (Sync.joined && !document.hidden) Sync.sync(); }, 20000);
+  window.addEventListener("focus", () => Sync.joined && Sync.sync());
+  window.addEventListener("online", () => Sync.joined && Sync.sync());
+  window.addEventListener("offline", () => Sync.joined && Sync.sync());
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && Sync.joined) Sync.sync(); });
+  Sync.state();
+  if (Sync.joined) Sync.sync();
+  render();
+</script>
+
+<style is:global>
+  .tk-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .tk-fam-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 12px}
+  .tk-fam-btn{display:flex;align-items:center;justify-content:center;gap:4px;min-width:0;height:40px;border:1px solid #bae6fd;background:#fff;color:var(--secfg);font:inherit;font-size:13px;font-weight:800;letter-spacing:-.2px;border-radius:12px;padding:0 6px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;-webkit-tap-highlight-color:transparent}
+  .tk-fam-btn:active{transform:scale(.98)}
+  .tk-fam-btn.on{background:var(--secondary);border-color:#7dd3fc}
+  #fam-push-btn.on{background:var(--secfg);border-color:var(--secfg);color:#fff}
+  .tk-fam-st{flex:none;font-size:11.5px;font-weight:700;color:var(--mutedfg);background:var(--muted);border-radius:100px;padding:3px 9px;white-space:nowrap}
+  .tk-fam-st[data-s="synced"]{color:#047857;background:#ecfdf5}.tk-fam-st[data-s="error"],.tk-fam-st[data-s="revoked"]{color:#dc2626}
+  .tk-fam-st[hidden],#fam-off[hidden],#fam-on[hidden],.tk-fam-sec[hidden],.tk-fam-share[hidden]{display:none!important}
+  .tk-fam-intro{margin:0;font-size:13.5px;color:var(--mutedfg)}
+  .tk-fam-inline{display:flex;gap:8px}
+  .tk-fam-inline input{flex:1;min-width:0;font:inherit;font-size:16px;padding:11px 12px;border:1px solid var(--border);border-radius:12px;background:#fff}
+  .tk-fam-inline .tk-save{flex:1}
+  .tk-fam-sec{border:0;border-radius:12px;padding:0 16px;background:var(--secfg);color:#fff;font:inherit;font-weight:800;cursor:pointer;white-space:nowrap}
+  .tk-fam-or{font-size:12.5px;color:var(--mutedfg);text-align:center;margin:12px 0 8px}
+  #fam-off,#fam-on{display:flex;flex-direction:column;gap:10px}
+  .tk-fam-code{display:block;font:800 15px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.5px;background:var(--bg);border:1px dashed #7dd3fc;border-radius:12px;padding:10px 12px;word-break:break-all;user-select:all;color:var(--secfg)}
+  .tk-fam-members{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+  .tk-fam-members li{display:flex;justify-content:space-between;gap:8px;font-size:13.5px;background:var(--bg);border-radius:10px;padding:7px 10px}
+  .tk-fam-members i{font-style:normal;color:var(--mutedfg);font-size:12px}.tk-fam-members span{color:var(--mutedfg);font-size:12px}
+  .tk-fam-danger button{flex:1;border:1px solid var(--border);background:#fff;border-radius:12px;padding:10px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;color:var(--fg)}
+  .tk-fam-danger button#fam-leave{color:#dc2626;border-color:#fecaca}
+  .tk-mv-box{display:flex;flex-direction:column;gap:8px;border:1px solid var(--border);border-radius:14px;padding:12px}
+  .tk-mv-box h4{margin:0;font-size:14px}
+  #mv-out{display:flex;flex-direction:column;gap:8px}#mv-out[hidden],.tk-mv-chrome[hidden],#mv-start[hidden],.tk-mv-err[hidden]{display:none!important}
+  .tk-mv-row{display:flex;gap:12px;align-items:center}
+  .tk-mv-qr{width:112px;height:112px;flex:none;background:#fff;border:1px solid var(--border);border-radius:10px;padding:4px}.tk-mv-qr svg{width:100%;height:100%;display:block}
+  .tk-mv-cd{display:flex;flex-direction:column;gap:4px;min-width:0}
+  .tk-mv-cd code{font:800 26px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:2px;color:var(--secfg);user-select:all}
+  .tk-mv-cd small{font-size:12.5px;color:var(--mutedfg)}
+  .tk-mv-how{margin:0;font-size:12.5px;line-height:18px;color:var(--mutedfg)}
+  .tk-mv-chrome{display:block;text-align:center;text-decoration:none}
+  .tk-mv-err{color:#b91c1c}
+  .tk-mv-hint{display:flex;align-items:center;gap:8px;margin:-4px 0 12px;padding:7px 6px 7px 12px;border-radius:12px;background:var(--card);border:1px dashed #bae6fd;font-size:12.5px;line-height:1.35}
+  .tk-mv-hint[hidden]{display:none!important}.tk-mv-hint span{flex:1;min-width:0}.tk-mv-hint small{display:block;color:var(--mutedfg);font-size:11.5px}
+  .tk-mv-hint button{flex:none;border:0;border-radius:9px;padding:6px 10px;background:var(--secondary);color:var(--secfg);font:inherit;font-size:12.5px;font-weight:800;cursor:pointer}
+  .tk-mv-hint .tk-mv-hint-x{background:transparent;color:var(--mutedfg);padding:6px 8px}
+  .tk-view-note{display:none;margin:6px 0 10px;font-size:13.5px;line-height:19px;font-weight:600;color:#1e3a8a;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:9px 12px}
+  body.tk-view .tk-view-note{display:block}
+  .tk-view-badge{display:none;align-self:center;font-size:12.5px;font-weight:700;color:#1d4ed8;background:#dbeafe;border:1px solid #93c5fd;border-radius:999px;padding:3px 10px;white-space:nowrap}
+  body.tk-view .tk-view-badge{display:inline-block}
+  .tk-viewgone-note{display:none;margin:6px 0 10px;font-size:13.5px;line-height:19px;font-weight:600;color:#7c2d12;background:#fff7ed;border:1px solid #fdba74;border-radius:12px;padding:9px 12px}
+  .tk-viewgone-note p{margin:0 0 8px}.tk-viewgone-note button{font:inherit;font-size:12.5px;font-weight:600;border:1px solid #fdba74;background:#fff;color:#7c2d12;border-radius:9px;padding:5px 10px;cursor:pointer}
+  body.tk-viewgone .tk-viewgone-note{display:block}body.tk-viewgone .tk-view-note{display:none!important}
+  .tk-cut-note,.tk-fam-cut{margin:6px 0 10px;font-size:13.5px;line-height:19px;font-weight:600;color:#7c2d12;background:#fff7ed;border:1px solid #fdba74;border-radius:12px;padding:9px 12px}
+  .tk-cut-note[hidden],.tk-fam-cut[hidden]{display:none}.tk-cut-note p{margin:0 0 8px}
+  .tk-cut-note button{font:inherit;font-size:13px;font-weight:700;border:0;background:#ea580c;color:#fff;border-radius:10px;padding:7px 12px;cursor:pointer}
+  #fam-sheet.tk-invited #fam-create,#fam-sheet.tk-invited .tk-fam-or{display:none}
+  body.tk-view .tk-voice,body.tk-view .tk-quick,body.tk-view #fab,body.tk-view #mv-btn,body.tk-view #mv-hint,
+  body.tk-view .tk-file,body.tk-view #d-clear,body.tk-view .tk-edit-only,body.tk-view #voice-gate,body.tk-view #sheet,body.tk-view #sheet-bg{display:none!important}
+  body.tk-view .tk-tl .tk-row{cursor:default}
+  .tk-view-tag{font-style:normal;font-size:11.5px;color:#1d4ed8;background:#dbeafe;border-radius:999px;padding:1px 7px;margin-left:4px}
+  .tk-fam-edit{margin:4px 0 10px;font-size:13.5px}.tk-fam-edit summary{cursor:pointer;font-weight:700;color:#334155;padding:6px 0}
+  .tk-fam-edit .tk-hint{margin:4px 0 8px}
+  .tk-fam-warn{margin:0;font-size:12px;line-height:17px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:8px 10px}
+  .tk-row .tx small.by{display:inline-block;margin-left:6px;font-size:11px;font-weight:700;color:var(--secfg);background:var(--secondary);border-radius:100px;padding:1px 7px;vertical-align:1px}
+  .tk-h1{font-size:24px;font-weight:800;letter-spacing:-.5px}
+  .tk-sub{margin:2px 0 12px;color:var(--mutedfg);font-size:13.5px}
+  .tk-since{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+  .tk-chip{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:8px 10px;display:flex;flex-direction:column;gap:1px;min-width:0}
+  .tk-chip span{font-size:11px;color:var(--mutedfg);white-space:nowrap}
+  .tk-chip b{font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tk-chip.on{background:#eef2ff;border-color:#c7d2fe}
+  .tk-quick{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:12px}
+  .tk-btn{grid-column:span 3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:92px;border:0;border-radius:20px;font:inherit;cursor:pointer;color:var(--fg);box-shadow:0 2px 8px rgba(15,23,42,.07);-webkit-tap-highlight-color:transparent;transition:transform .08s}
+  .tk-btn:active{transform:scale(.96)}
+  .tk-btn .e{font-size:30px;line-height:1}
+  .tk-btn .l{font-size:16px;font-weight:800}
+  .tk-pee,.tk-poop,.tk-both{grid-column:span 2;min-height:80px}
+  .tk-pee .e,.tk-poop .e,.tk-both .e{font-size:24px}
+  .tk-feed{background:#ffedd5}.tk-sleep{background:#e0e7ff}.tk-sleep.on{background:#fef3c7}
+  .tk-pee{background:#e0f2fe}.tk-poop{background:#fef3c7}.tk-both{background:#f1f5f9}
+  .tk-voice{margin-bottom:14px;position:relative}
+  .tk-voice-panel[hidden]{display:none!important}
+  .tk-mic{width:100%;min-height:96px;display:flex;align-items:center;gap:14px;padding:16px 18px;border:0;border-radius:24px;background:linear-gradient(135deg,#4f46e5,#0284c7);color:#fff;font:inherit;text-align:left;cursor:pointer;box-shadow:0 10px 24px rgba(79,70,229,.35);-webkit-tap-highlight-color:transparent;transition:transform .08s}
+  .tk-mic:active{transform:scale(.98)}
+  .tk-mic-ic{font-size:32px;width:60px;height:60px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 0 0 0 rgba(255,255,255,.6);animation:tkpulse 2.2s ease-out infinite}
+  .tk-mic-tx{display:flex;flex-direction:column;min-width:0;flex:1}
+  .tk-mic-tx b{font-size:20px;font-weight:800;letter-spacing:-.3px}
+  .tk-mic-tx small{font-size:14px;font-weight:600;opacity:.95;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:opacity .2s}
+  .tk-mic-tx small.fade{opacity:0}
+  .tk-mic-go{flex:none;font-size:11.5px;font-weight:800;background:rgba(255,255,255,.2);border-radius:100px;padding:5px 9px;white-space:nowrap}
+  @keyframes tkpulse{0%{box-shadow:0 0 0 0 rgba(255,255,255,.55)}70%{box-shadow:0 0 0 14px rgba(255,255,255,0)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}}
+  .tk-mic.live{background:linear-gradient(135deg,#dc2626,#f97316)}
+  .tk-mic.live .tk-mic-ic{animation-duration:1s}
+  .tk-mic.off{background:#e2e8f0;color:#334155;box-shadow:none;cursor:not-allowed;border:2px dashed #94a3b8}
+  .tk-mic.off .tk-mic-ic{animation:none;background:#f8fafc;filter:grayscale(1)}
+  .tk-mic.off .tk-mic-go{background:#cbd5e1}
+  .tk-coach{position:relative;display:inline-flex;align-items:center;gap:8px;margin:0 0 8px 6px;background:#0f172a;color:#fff;font-size:13px;font-weight:700;padding:7px 8px 7px 12px;border-radius:12px}
+  .tk-coach::after{content:"";position:absolute;left:28px;bottom:-6px;border:6px solid transparent;border-bottom:0;border-top-color:#0f172a}
+  .tk-coach button{border:0;background:rgba(255,255,255,.15);color:#fff;border-radius:8px;width:22px;height:22px;font-size:11px;cursor:pointer}
+  .tk-coach[hidden],.tk-fab[hidden]{display:none!important}
+  .tk-fab{position:fixed;right:16px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:35;display:flex;align-items:center;gap:6px;border:0;border-radius:100px;padding:12px 18px 12px 14px;background:linear-gradient(135deg,#4f46e5,#0284c7);color:#fff;font:inherit;font-size:15px;cursor:pointer;box-shadow:0 8px 22px rgba(79,70,229,.45);animation:tkfab 2.2s ease-out infinite}
+  .tk-fab span{font-size:22px;line-height:1}
+  .tk-fab.live{background:linear-gradient(135deg,#dc2626,#f97316)}
+  .tk-fab.off{background:#475569;animation:none}
+  @keyframes tkfab{0%{box-shadow:0 8px 22px rgba(79,70,229,.45),0 0 0 0 rgba(79,70,229,.45)}70%{box-shadow:0 8px 22px rgba(79,70,229,.45),0 0 0 12px rgba(79,70,229,0)}100%{box-shadow:0 8px 22px rgba(79,70,229,.45),0 0 0 0 rgba(79,70,229,0)}}
+  .tk-toast:not([hidden]) ~ .tk-fab,.tk-sheet:not([hidden]) ~ .tk-fab{display:none!important}
+  @media (prefers-reduced-motion: reduce){.tk-mic-ic,.tk-fab{animation:none!important}.tk-mic,.tk-btn{transition:none}}
+  .tk-hint{font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:8px 10px;margin:8px 0 0}
+  .tk-typed{margin-top:8px}
+  .tk-typed summary{font-size:12.5px;color:var(--mutedfg);cursor:pointer;padding:4px 2px}
+  .tk-typed form{display:flex;gap:8px;margin-top:6px}
+  .tk-typed input{flex:1;min-width:0;font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:#fff}
+  .tk-typed button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:0 16px;background:var(--primary);color:#fff}
+  .tk-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:14px;margin-bottom:14px}
+  .tk-card-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+  .tk-card-h h2{font-size:16px;font-weight:800}
+  .tk-card-h span{font-size:12px;color:var(--mutedfg)}
+  .tk-nav{width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:#fff;font-size:20px;line-height:1;cursor:pointer;color:var(--fg)}
+  .tk-nav:disabled{opacity:.3}
+  .tk-sum{display:grid;grid-template-columns:1.4fr 1.2fr .7fr .7fr;gap:8px}
+  .tk-sum div{background:var(--bg);border-radius:12px;padding:8px;display:flex;flex-direction:column;min-width:0}
+  .tk-sum b{font-size:18px;font-weight:800;white-space:nowrap}
+  .tk-sum span{font-size:11px;color:var(--mutedfg)}.tk-sum i{font-style:normal}
+  .tk-fc{background:linear-gradient(180deg,#f5f3ff 0,var(--card) 70px)}
+  .tk-fc-now,.tk-fc-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+  .tk-fc-now li,.tk-fc-list li{display:flex;align-items:flex-start;gap:10px;background:var(--bg);border-radius:12px;padding:9px 10px;min-width:0}
+  .tk-fc .ic{font-size:18px;line-height:20px;min-width:22px;text-align:center}
+  .tk-fc .tx{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+  .tk-fc .tx b{font-size:13.5px;font-weight:800;line-height:19px}
+  .tk-fc .tx small{font-size:11.5px;line-height:16px;color:var(--mutedfg)}
+  .tk-fc-next{margin-top:12px}
+  .tk-fc-next h3{margin:0 0 8px;font-size:14.5px;font-weight:800}
+  .tk-fc-list li{background:#fff;border:1px solid var(--border)}
+  .tk-fc-list li.soon{border-color:#c7d2fe;background:#eef2ff}
+  .tk-fc-list li.overdue{border-color:#fdba74;background:#fff7ed}
+  .tk-fc-conf{flex:none;align-self:center;font-style:normal;font-size:10.5px;font-weight:800;border-radius:100px;padding:3px 8px;white-space:nowrap;background:#e2e8f0;color:#334155}
+  .tk-fc-conf.high{background:#dcfce7;color:#166534}.tk-fc-conf.medium{background:#e0f2fe;color:#075985}.tk-fc-conf.low{background:#fef3c7;color:#92400e}
+  .tk-fc-more{margin:10px 0 0;font-size:12.5px;font-weight:700;color:#4338ca;background:#eef2ff;border-radius:10px;padding:8px 10px}
+  .tk-fc-more[hidden],.tk-fc-list[hidden],.tk-fc-why[hidden]{display:none!important}
+  .tk-fc-why{margin-top:10px;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:12px;padding:9px 11px;font-size:12.5px;line-height:18px;color:#334155}
+  .tk-fc-why b{display:block;font-size:12px;font-weight:800;color:#0f172a;margin-bottom:4px}
+  .tk-fc-why ul{margin:0;padding-left:16px;display:flex;flex-direction:column;gap:3px}
+  .tk-fc-disc{margin:10px 0 0;font-size:11.5px;line-height:16px;color:var(--mutedfg)}
+  .tk-tl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+  .tk-row{width:100%;display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;border:1px solid var(--border);background:#fff;font:inherit;text-align:left;cursor:pointer;color:var(--fg)}
+  .tk-row .ic{font-size:20px;min-width:28px;text-align:center;white-space:nowrap}
+  .tk-row .tx{flex:1;font-weight:700;font-size:14px}
+  .tk-row .tm{font-size:12px;color:var(--mutedfg);white-space:nowrap}
+  .tk-row.live{background:#eef2ff;border-color:#c7d2fe}
+  .tk-empty{font-size:13px;color:var(--mutedfg);margin:0;padding:8px 0}
+  .tk-hist{width:100%;border-collapse:collapse;font-size:12.5px}
+  .tk-hist th{font-size:11px;color:var(--mutedfg);font-weight:600;text-align:left;padding:4px}
+  .tk-hist td{padding:7px 4px;border-top:1px solid var(--border);white-space:nowrap}
+  .tk-hist tr[data-day]{cursor:pointer}.tk-hist tr.sel td{background:#f0f9ff}
+  .tk-hist td:nth-child(2){width:42%}
+  .tk-hist .bar{height:5px;border-radius:4px;background:var(--muted);overflow:hidden;margin-bottom:2px}
+  .tk-hist .bar i{display:block;height:100%;background:#f97316;border-radius:4px}
+  .tk-note{font-size:12.5px;color:var(--mutedfg);margin:0 0 10px}
+  .tk-data-btns{display:flex;gap:8px;flex-wrap:wrap}
+  .tk-data-btns button,.tk-file{font:inherit;font-size:13px;font-weight:700;border:1px solid var(--border);background:#fff;border-radius:12px;padding:9px 14px;cursor:pointer;color:var(--fg)}
+  .tk-data-btns .danger{color:#dc2626;border-color:#fecaca;margin-left:auto}
+  .tk-disc{font-size:11.5px;line-height:17px;color:var(--mutedfg);margin:4px 2px 20px}
+  .tk-sheet-bg{position:fixed;inset:0;background:rgba(15,23,42,.4);z-index:40}
+  .tk-sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;background:#fff;border-radius:22px 22px 0 0;padding:16px 20px calc(18px + env(safe-area-inset-bottom));max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:12px;max-height:90vh;overflow:auto;box-shadow:0 -8px 30px rgba(0,0,0,.15)}
+  .tk-sheet[hidden],.tk-sheet-bg[hidden],.tk-toast[hidden],.tk-f[hidden],.tk-hint[hidden],.tk-del[hidden],.tk-empty[hidden]{display:none!important}
+  .tk-sheet-h{display:flex;align-items:center;justify-content:space-between}
+  .tk-sheet-h h3{font-size:18px;font-weight:800}
+  .tk-x{border:0;background:var(--muted);width:34px;height:34px;border-radius:50%;font-size:15px;cursor:pointer}
+  .tk-f{display:flex;flex-direction:column;gap:6px}
+  .tk-f label{font-size:12.5px;font-weight:700;color:var(--mutedfg)}
+  .tk-f input{font:inherit;font-size:16px;padding:11px 12px;border:1px solid var(--border);border-radius:12px;background:#fff;width:100%;min-width:0}
+  .tk-seg{display:flex;background:var(--muted);border-radius:14px;padding:4px;gap:4px}
+  .tk-seg button{flex:1;border:0;background:transparent;font:inherit;font-weight:700;font-size:15px;padding:10px;border-radius:10px;cursor:pointer;color:var(--mutedfg)}
+  .tk-seg button.on{background:#fff;color:var(--fg);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+  .tk-step{display:flex;align-items:stretch;gap:8px;margin-top:8px}.tk-step input{flex:1;min-width:0;text-align:center;font-size:20px!important;font-weight:800;margin:0!important}
+  .tk-step-b{flex:none;width:56px;min-height:52px;border-radius:14px;border:1px solid var(--border);background:var(--bg);font:inherit;font-size:28px;font-weight:800;color:#c2410c;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+  .tk-step-b:active{background:#ffedd5}
+  .tk-chips{display:flex;gap:6px;flex-wrap:wrap}
+  .tk-chips button{border:1px solid var(--border);background:#fff;border-radius:100px;padding:7px 13px;font:inherit;font-weight:700;font-size:14px;cursor:pointer;color:var(--fg)}
+  .tk-chips button.on{background:#ffedd5;border-color:#fdba74}
+  .tk-save{border:0;border-radius:14px;background:var(--primary);color:#fff;font:inherit;font-size:16px;font-weight:800;padding:14px;cursor:pointer}
+  .tk-del{border:0;background:none;color:#dc2626;font:inherit;font-size:13px;font-weight:700;padding:4px;cursor:pointer}
+  .tk-toast{position:fixed;left:12px;right:12px;bottom:calc(72px + env(safe-area-inset-bottom));z-index:50;max-width:520px;margin:0 auto;background:#0f172a;color:#fff;border-radius:16px;padding:12px 12px 12px 14px;display:flex;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);overflow:hidden}
+  .tk-toast-bar{position:absolute;left:0;top:0;height:3px;background:#38bdf8;width:0}
+  .tk-toast-tx{flex:1;font-size:14px;font-weight:700}
+  .tk-toast-act{display:flex;gap:6px;flex:none}
+  .tk-toast-act button{border:0;border-radius:10px;padding:8px 10px;font:inherit;font-size:13px;font-weight:800;background:rgba(255,255,255,.14);color:#fff;cursor:pointer;white-space:nowrap}
+  .tk-toast-act button.undo{background:#fff;color:#0f172a}
+  .tk-toast-act button.ok{background:#38bdf8;color:#0f172a}
+  .tk-clk .tk-card-h{margin-bottom:6px}
+  .tk-clk-mode{padding:3px;border-radius:12px;flex:none}.tk-clk-mode button{flex:none;font-size:13px;padding:6px 12px;border-radius:9px;white-space:nowrap}
+  .tk-clk .tk-card-h h2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .tk-clk-nav{display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:4px}
+  .tk-clk-nav b{font-size:14px;font-weight:800;min-width:0;text-align:center;flex:1}
+  .tk-clk-today{border:1px solid #bae6fd;background:var(--secondary);color:var(--secfg);font:inherit;font-size:12px;font-weight:800;border-radius:100px;padding:5px 10px;cursor:pointer}
+  .tk-clk-today[hidden],.tk-clk-hint[hidden]{display:none!important}
+  .tk-clk-wrap{max-width:340px;margin:0 auto}
+  #clk-svg{width:100%;height:auto;display:block;font-family:inherit}
+  .ck-svg .ck-bg{fill:#fff;stroke:var(--border)}
+  .ck-svg .ck-tick{stroke:#cbd5e1;stroke-width:1}.ck-svg .ck-tick.major{stroke:#64748b;stroke-width:1.6}
+  .ck-svg .ck-hr{font-size:11px;font-weight:700;fill:#64748b;text-anchor:middle;dominant-baseline:central}
+  .ck-svg .ck-ic{font-size:13px;text-anchor:middle;dominant-baseline:central}
+  .ck-svg .ck-track{fill:none;stroke:#f1f5f9;stroke-width:22}.ck-svg .ck-track.wk{stroke-width:8}
+  .ck-svg .ck-sleep{fill:none;stroke:#6366f1;stroke-width:22}.ck-svg .ck-sleep.wk{stroke-width:8}
+  .ck-svg .ck-sleep.live{stroke:#a5b4fc}
+  .ck-svg .ck-guide{fill:none;stroke:#e2e8f0;stroke-dasharray:2 4}
+  .ck-svg .ck-formula{fill:#f97316;stroke:#fff;stroke-width:1.5}.ck-svg .ck-breast{fill:#ec4899;stroke:#fff;stroke-width:1.5}
+  .ck-svg .ck-pee{fill:#0ea5e9}.ck-svg .ck-poop{fill:#a16207}
+  .ck-svg .ck-now{stroke:#ef4444;stroke-width:2;stroke-linecap:round}.ck-svg .ck-now-dot{fill:#ef4444}
+  .ck-svg .ck-hole{fill:#fff}
+  .ck-svg .ck-c1{font-size:17px;font-weight:800;fill:#0f172a;text-anchor:middle}.ck-svg .ck-c2{font-size:11.5px;font-weight:700;fill:#64748b;text-anchor:middle}
+  .tk-clk.tl2on .tk-clk-wrap,.tk-clk.tl2on .tk-clk-legend,.tk-clk.tl2on .tk-clk-stats{display:none}
+  .tl2[hidden]{display:none!important}
+  .tk-clk-nav[hidden]{display:none!important}
+  .tk-clk .tk-card-h{flex-wrap:wrap}
+  .cmp[hidden]{display:none!important}
+  .tk-clk.cmpon .tk-clk-wrap,.tk-clk.cmpon .tk-clk-stats,.tk-clk.cmpon .tk-clk-hint,.tk-clk.cmpon .tk-clk-legend{display:none!important}
+  .cmp-hint{font-size:12.5px;color:var(--mutedfg);text-align:center;margin:2px 0 8px}
+  .cmp-pre{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:8px;scrollbar-width:none}
+  .cmp-pre button{flex:none;border:1px solid var(--border);background:#fff;color:var(--fg);font:inherit;font-size:12.5px;font-weight:700;border-radius:100px;padding:6px 11px;cursor:pointer;white-space:nowrap}
+  .cmp-rows{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+  .cmp-row{display:flex;align-items:center;gap:6px}
+  .cmp-row input[type=date]{flex:1;min-width:0;font:inherit;font-size:15px;padding:8px 8px;border:1px solid var(--border);border-radius:10px;background:#fff;color:var(--fg)}
+  .cmp-row select{flex:none;font:inherit;font-size:14px;padding:8px 6px;border:1px solid var(--border);border-radius:10px;background:#fff;color:var(--fg)}
+  .cmp-row .cmp-x{flex:none;width:34px;height:34px;border:0;border-radius:10px;background:var(--muted);color:var(--mutedfg);font-size:16px;cursor:pointer}
+  .cmp-b{flex:none;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:7px;color:#fff;font-size:12px;font-weight:800;font-style:normal}
+  .cmp-b.b0{background:#6366f1}.cmp-b.b1{background:#f59e0b}.cmp-b.b2{background:#10b981}.cmp-b.b3{background:#ec4899}
+  .cmp-add{border:1px dashed #94a3b8;background:transparent;color:var(--mutedfg);font:inherit;font-size:13px;font-weight:700;border-radius:10px;padding:8px;cursor:pointer}
+  .cmp-leg{list-style:none;margin:0 0 8px;padding:0;display:flex;flex-wrap:wrap;justify-content:center;gap:8px 14px}
+  .cmp-leg li{display:flex;align-items:center;gap:5px;font-size:13px;font-weight:800;min-width:0}
+  .cmp-leg li span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw}
+  .cmp-leg li small{font-size:11px;font-weight:700;color:var(--mutedfg)}
+  .cmp-one{max-width:340px;margin:0 auto 10px}
+  .cmp-one svg{width:100%;height:auto;display:block}
+  .ck-svg .ck-sleep.cmp{fill:none;stroke-linecap:butt}
+  .cmp-t{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+  .cmp-t th,.cmp-t td{padding:7px 3px;border-bottom:1px solid #f1f5f9;text-align:right;vertical-align:top;overflow-wrap:anywhere}
+  .cmp-t th:first-child,.cmp-t td:first-child{text-align:left;color:var(--mutedfg);font-weight:700;font-size:12px;width:24%}
+  .cmp-t thead th{font-size:12px;border-bottom:1px solid var(--border)}.cmp-t thead th small{display:inline;font-size:11px;color:var(--mutedfg);font-weight:700}
+  .cmp-t td b{display:block;font-weight:800;font-size:14px;color:var(--fg)}
+  .cmp-t td small{display:block;font-size:11.5px;font-weight:700;margin-top:1px}
+  .cmp-t small.up{color:#0369a1}.cmp-t small.dn{color:#c2410c}.cmp-t small.eq,.cmp-t small.na{color:#94a3b8}
+  .t4-leg{display:flex;justify-content:center;gap:14px;align-items:center;font-size:13px;font-weight:700;color:var(--mutedfg);margin:4px 0 8px}
+  .t4-leg i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+  .t4-leg i.td,.t4-bar i.td{background:#f97316}.t4-leg i.av{background:#94a3b8}
+  .t4-top{margin:0 0 6px;padding:9px 12px;border-radius:12px;font-size:15px;line-height:1.45}.t4-top b{font-weight:800}.t4-top small{font-size:12.5px;color:var(--mutedfg)}
+  .t4-top.td{background:#fff7ed;color:#9a3412}.t4-top.td b{color:#c2410c}
+  .t4-top.av{background:#f8fafc;color:#475569}.t4-top.av b{color:#334155}.t4-top.av.muted{color:#94a3b8}
+  .t4-list{list-style:none;margin:8px 0 0;padding:0}
+  .t4-list li{position:relative;padding:12px 4px 10px;border-bottom:1px solid #f1f5f9}.t4-list li:last-child{border-bottom:0}
+  .t4-k{font-weight:800;font-size:16px;color:#0f172a;margin-bottom:4px}
+  .t4-line{display:flex;gap:8px;align-items:baseline;font-size:14.5px;line-height:1.45;padding:1px 0}
+  .t4-line b{flex:none;width:36px;font-size:13px;font-weight:800}.t4-line span{min-width:0}
+  .t4-line.td{color:#9a3412}.t4-line.td b{color:#c2410c}
+  .t4-line.av{color:#64748b}.t4-line.av b{color:#64748b}
+  .t4-line.muted{color:#94a3b8}.t4-line.muted b{color:#94a3b8}
+  .t4-bar{height:8px;background:#f1f5f9;border-radius:99px;margin:8px 0 0;overflow:hidden}.t4-bar i{display:block;height:100%;border-radius:99px}
+  .t4-mark{position:absolute;bottom:10px;width:0;height:8px;pointer-events:none}.t4-mark i{display:block;width:3px;height:14px;margin-top:-3px;margin-left:-1.5px;background:#64748b;border-radius:2px}
+  .t4-total .t4-k{color:#c2410c}
+  .tk-clk-hint{font-size:12px;color:var(--mutedfg);text-align:center;margin:4px 0 0}
+  .tk-clk-legend{list-style:none;margin:8px 0 10px;padding:0;display:flex;flex-wrap:wrap;justify-content:center;gap:4px 12px;font-size:12px;color:var(--mutedfg);font-weight:600}
+  .tk-clk.wk .lg-d{display:none!important}
+  .tk-clk-legend li{display:flex;align-items:center;gap:5px}
+  .tk-clk-legend i{display:inline-block;width:10px;height:10px;border-radius:50%}
+  .tk-clk-legend .lg-sleep{width:16px;border-radius:3px;background:#6366f1}.tk-clk-legend .lg-formula{background:#f97316}.tk-clk-legend .lg-breast{background:#ec4899}.tk-clk-legend .lg-pee{background:#0ea5e9}.tk-clk-legend .lg-poop{background:#a16207}
+  .tk-clk-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .tk-clk-stats div{background:var(--bg);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;min-width:0}
+  .tk-clk-stats span{font-size:11px;color:var(--mutedfg)}
+  .tk-clk-stats b{font-size:16px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tk-clk-stats small{font-size:11px;line-height:15px;color:var(--mutedfg)}
+  .tk-hf{display:flex;align-items:center;gap:10px;margin:10px 2px 0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .tk-hf[hidden]{display:none!important}
+  .tk-hf input{position:absolute;opacity:0;width:1px;height:1px}
+  .tk-hf-sw{flex:none;width:44px;height:26px;border-radius:100px;background:#cbd5e1;position:relative;transition:background .15s}
+  .tk-hf-sw::after{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .15s}
+  .tk-hf input:checked + .tk-hf-sw{background:#059669}.tk-hf input:checked + .tk-hf-sw::after{transform:translateX(18px)}
+  .tk-hf input:focus-visible + .tk-hf-sw{outline:2px solid var(--primary);outline-offset:2px}
+  .tk-hf-tx{display:flex;flex-direction:column;min-width:0}
+  .tk-hf-tx b{font-size:13.5px;font-weight:800}.tk-hf-tx em{font-style:normal;font-size:10.5px;font-weight:800;color:#92400e;background:#fef3c7;border-radius:100px;padding:1px 7px;margin-left:4px;vertical-align:1px}
+  .tk-hf-tx small{font-size:11.5px;color:var(--mutedfg);line-height:15px}
+  .tk-mic.hf{background:linear-gradient(135deg,#059669,#0d9488);box-shadow:0 10px 24px rgba(5,150,105,.35)}
+  .tk-mic.hf .tk-mic-ic{animation-duration:1.4s}
+  .tk-say-ex ul{margin:6px 0 0;padding:0 0 0 2px;list-style:none;display:flex;flex-wrap:wrap;gap:6px}
+  .tk-say-ex li{font-size:12.5px;font-weight:700;background:#fff;border:1px solid var(--border);border-radius:100px;padding:5px 10px}
+  .tk-say{position:relative;display:flex;flex-direction:column;gap:10px;margin:0 0 14px;padding:14px 44px 14px 16px;border-radius:18px;background:#ecfdf5;border:2px solid #34d399;box-shadow:0 6px 18px rgba(16,185,129,.18)}
+  .tk-say[hidden],.tk-say small[hidden]{display:none!important}
+  .tk-say[data-tone="warn"]{background:#fffbeb;border-color:#fbbf24;box-shadow:none}
+  .tk-say[data-tone="muted"]{background:var(--card);border-color:var(--border);box-shadow:none}
+  .tk-say[data-tone="info"]{background:#eef2ff;border-color:#818cf8;box-shadow:none}
+  .tk-say-main{display:flex;flex-direction:column;gap:3px}
+  .tk-say-main b{font-size:20px;font-weight:800;line-height:1.35;letter-spacing:-.3px;color:#064e3b}
+  .tk-say[data-tone="warn"] .tk-say-main b{font-size:15px;color:#92400e}.tk-say[data-tone="muted"] .tk-say-main b{font-size:15px;color:var(--fg)}.tk-say[data-tone="info"] .tk-say-main b{font-size:15px;color:#312e81}
+  .tk-say-main small{font-size:13px;font-weight:700;color:#047857}
+  .tk-say-main small[data-s="sent"]{color:#059669}
+  .tk-say-act{display:flex;gap:8px;flex-wrap:wrap}.tk-say-act:empty{display:none}
+  .tk-say-act button{border:1px solid var(--border);background:#fff;border-radius:12px;padding:12px 16px;font:inherit;font-size:15px;font-weight:800;cursor:pointer;color:var(--fg)}
+  .tk-say-act button.undo{background:#0f172a;border-color:#0f172a;color:#fff}
+  .tk-say-act button.ok{background:var(--primary);border-color:var(--primary);color:#fff}
+  .tk-say-x{position:absolute;top:10px;right:10px;border:0;background:rgba(15,23,42,.06);width:28px;height:28px;border-radius:50%;font-size:12px;cursor:pointer;color:var(--fg)}
+  .tk-setup-link{display:flex;align-items:center;justify-content:center;gap:6px;margin:10px 0 2px;padding:12px;border-radius:14px;background:rgba(79,142,247,.1);font-size:14px;font-weight:800;color:var(--primary);text-decoration:none}
+  .tk-gate{position:fixed;inset:0;z-index:1000;background:rgba(15,23,42,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px}
+  .tk-gate[hidden]{display:none!important}
+  body.tk-gated{overflow:hidden}
+  .tk-gate-go{width:min(86vw,360px);aspect-ratio:1;border-radius:50%;border:0;background:radial-gradient(circle at 35% 30%,#6ea8ff,#4F8EF7 55%,#2f5fd0);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;font:inherit;cursor:pointer;box-shadow:0 0 0 14px rgba(79,142,247,.25),0 20px 50px rgba(0,0,0,.4);animation:tkPulse 1.6s ease-in-out infinite}
+  .tk-gate-go:focus{outline:none}.tk-gate-go:focus-visible{outline:3px solid #fff;outline-offset:8px}
+  .tk-gate-ic{font-size:84px;line-height:1}
+  .tk-gate-go b{font-size:30px;font-weight:900;letter-spacing:-.5px}
+  .tk-gate-go small{font-size:15px;font-weight:700;opacity:.9}
+  .tk-gate-why{color:#cbd5e1;font-size:14px;text-align:center;margin:0;max-width:340px}
+  .tk-gate-x{border:1px solid rgba(255,255,255,.35);background:transparent;color:#fff;border-radius:999px;padding:10px 22px;font:inherit;font-size:15px;font-weight:700;cursor:pointer}
+  @keyframes tkPulse{0%,100%{box-shadow:0 0 0 10px rgba(79,142,247,.25),0 20px 50px rgba(0,0,0,.4)}50%{box-shadow:0 0 0 22px rgba(79,142,247,.12),0 20px 50px rgba(0,0,0,.4)}}
+  @media (prefers-reduced-motion:reduce){.tk-gate-go{animation:none}}
+</style>

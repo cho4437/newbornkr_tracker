@@ -1,0 +1,1026 @@
+---
+import { APP_NAME, lp } from "../lib/site";
+// 성장 캘린더 & 타임라인 + 성장 사진 (birth date and photos on this device; shared via the tracker's family code when connected).
+import Base from "../layouts/Base.astro";
+import { SOURCES } from "../lib/growth-data.js";
+interface Props { lang: "ko" | "en" | "pt" }
+const { lang } = Astro.props;
+const en = lang !== "ko"; // en + pt
+const t3 = (ko: string, e: string, pt: string) => (lang === "pt" ? pt : lang === "en" ? e : ko);
+const M_PT = { title: "Calendário de crescimento | marcos, vacinas e consultas do bebê", desc: "Informe a data de nascimento do bebê para ver marcos do desenvolvimento, as datas de vacinas e consultas na Coreia e guardar fotos de crescimento.",
+      h1: "Calendário e linha do tempo do crescimento", sub: "Marcos do desenvolvimento, vacinas do calendário nacional coreano e consultas infantis por idade, com datas calculadas a partir do nascimento do bebê.",
+      birthQ: "Data de nascimento do bebê", save: "Salvar", change: "Alterar data de nascimento", setupNote: "Fica guardado neste aparelho (navegador). Com um código da família, a data de nascimento e as fotos são compartilhadas com a família.",
+      tabTl: "Linha do tempo", tabPh: "Fotos", upTitle: "Próximos itens", addPh: "Adicionar fotos", exportPh: "Baixar tudo (ZIP)",
+      disc: "Cada criança se desenvolve no seu ritmo. Os marcos são do CDC dos EUA (o que a maioria das crianças, 75% ou mais, faz até essa idade) e não são uma ferramenta de triagem. Se seu filho perder habilidades que já tinha ou algo preocupar, fale com um pediatra. As datas de vacinas e consultas são as recomendadas a partir do nascimento; confirme o calendário real com a clínica ou no KDCA Immunization Helper (nip.kdca.go.kr).",
+      srcTitle: "Fontes", viewNote: "👀 Só visualização: você pode ver o calendário, os marcos e as fotos da família, mas não pode alterá-los." };
+const M = lang === "pt" ? M_PT : en
+  ? { title: "Growth calendar & timeline | Baby milestones, vaccines, checkups", desc: "Enter your baby's birth date to see milestones, Korea's vaccine and checkup dates, and keep growth photos on this device.",
+      h1: "Growth calendar & timeline", sub: "Milestones, Korea's national vaccines and infant checkups by age, with dates worked out from your baby's birth date.",
+      birthQ: "Baby's date of birth", save: "Save", change: "Change birth date", setupNote: "Stored on this device (browser). With a family code, the birth date and photos are shared with your family.",
+      tabTl: "Timeline", tabPh: "Photos", upTitle: "Coming up", addPh: "Add photos", exportPh: "Download all (ZIP)",
+      disc: "Every child develops at their own pace. Milestones are from the U.S. CDC (things most children, 75% or more, do by that age) and are not a screening tool. If your child loses skills they once had or anything worries you, talk to a pediatrician. Vaccine and checkup dates are recommended timings worked out from the birth date; confirm your actual schedule with your clinic or the KDCA Immunization Helper (nip.kdca.go.kr).",
+      srcTitle: "Sources", viewNote: "👀 View-only: you can see your family's growth calendar, milestones and photos, but not change them." }
+  : { title: "성장 캘린더 & 타임라인 | 발달·예방접종·건강검진 일정", desc: "아기 생일을 넣으면 개월별 발달 이정표, 국가예방접종·영유아 건강검진 날짜를 계산해 주고 성장 사진을 기기에 보관해요.",
+      h1: "성장 캘린더 & 타임라인", sub: "개월별 발달 이정표와 국가예방접종·영유아 건강검진 일정을 아기 생일 기준 날짜로 보여드려요.",
+      birthQ: "아기 생년월일", save: "저장", change: "생일 바꾸기", setupNote: "이 기기(브라우저)에 저장돼요. 가족코드가 연결되어 있으면 가족과 생일·사진이 함께 맞춰져요.",
+      tabTl: "타임라인", tabPh: "성장 사진", upTitle: "다가오는 일정", addPh: "사진 추가", exportPh: "전체 내려받기 (ZIP)",
+      disc: "아이마다 발달 속도는 달라요. 발달 이정표는 미국 CDC 기준으로 '대부분(75% 이상)의 아이가 그 나이까지 하는 것'이며 진단 도구가 아니에요. 할 수 있던 것을 못 하게 되었거나 걱정되면 소아청소년과 의사와 상담하세요. 예방접종·검진 날짜는 생일로 계산한 권장 시기이며, 실제 일정은 의료기관이나 예방접종도우미(nip.kdca.go.kr)에서 확인하세요.",
+      srcTitle: "출처", viewNote: "👀 보기 전용이에요. 가족의 성장 캘린더·이정표·사진을 볼 수만 있어요." };
+---
+<Base appTitle={APP_NAME} lang={lang} title={M.title} description={M.desc} path="/growth" tab="growth">
+  <h1 class="h-title">{M.h1}</h1>
+  <p class="h-sub">{M.sub}</p>
+  <p class="g-view-note" id="g-view-note-top">{M.viewNote}</p>
+  <script is:inline>try { var f = JSON.parse(localStorage.getItem("nb_tracker_v1_family") || "null"); if ((f && f.role === "view") || (!f && localStorage.getItem("nb_tracker_v1_viewgone"))) document.body.classList.add("g-viewonly"); } catch (e) {}</script>
+
+  <section class="g-card" id="g-setup" hidden aria-labelledby="g-setup-h">
+    <h2 class="g-h2" id="g-setup-h">🎂 {M.birthQ}</h2>
+    <div class="g-quick">
+      <button type="button" class="g-qchip" data-quick="0">👶 {t3("오늘 태어났어요", "Born today", "Nasceu hoje")}</button>
+      <button type="button" class="g-qchip" data-quick="1">{t3("어제", "Yesterday", "Ontem")}</button>
+      <button type="button" class="g-qchip g-hint" id="g-hint" hidden></button>
+    </div>
+    <div class="g-ymd" role="group" aria-label={M.birthQ}>
+      <label><select id="g-y" class="g-sel" aria-label={t3("년", "Year", "Ano")}></select><span>{t3("년", "", "")}</span></label>
+      <label><select id="g-m" class="g-sel" aria-label={t3("월", "Month", "Mês")}></select><span>{t3("월", "", "")}</span></label>
+      <label><select id="g-d" class="g-sel" aria-label={t3("일", "Day", "Dia")}></select><span>{t3("일", "", "")}</span></label>
+    </div>
+    <div class="g-agein">
+      <span>{t3("또는 우리 아기는 생후", "or: my baby is", "ou: meu bebê tem")}</span>
+      <input type="number" id="g-age-n" class="g-input g-num" inputmode="numeric" min="0" max="1500" placeholder={t3("예: 93", "e.g. 93", "ex.: 93")} aria-label={t3("생후 나이", "Age", "Idade")} />
+      <select id="g-age-u" class="g-sel g-unit" aria-label={t3("단위", "Unit", "Unidade")}>
+        <option value="dplus">{t3("일째 (D+)", "days (Day N)", "dias (dia N)")}</option>
+        <option value="weeks">{t3("주", "weeks old", "semanas")}</option>
+        <option value="months">{t3("개월", "months old", "meses")}</option>
+      </select>
+    </div>
+    <p class="g-confirm" id="g-confirm" aria-live="polite"></p>
+    <p class="g-err" id="g-err" hidden></p>
+    <div class="g-row g-setup-act">
+      <button type="button" class="g-btn g-big" id="g-save">{t3("이 날짜로 저장", "Save this date", "Salvar esta data")}</button>
+      <button type="button" class="g-btn g-ghost" id="g-cancel" hidden>{t3("취소", "Cancel", "Cancelar")}</button>
+    </div>
+    <p class="g-mini" id="g-setup-note">{M.setupNote}</p>
+  </section>
+
+  <section class="g-card g-now" id="g-now" hidden aria-live="polite"></section>
+
+  <div class="g-seg" id="g-seg" hidden role="tablist">
+    <button type="button" role="tab" id="g-tab-tl" aria-selected="true">{M.tabTl}</button>
+    <button type="button" role="tab" id="g-tab-ph" aria-selected="false">{M.tabPh} <span id="g-ph-n"></span></button>
+  </div>
+
+  <div id="g-pane-tl" hidden>
+    <section class="g-card" id="g-cal-card" aria-labelledby="g-cal-h">
+      <div class="g-cal-head">
+        <button type="button" class="g-cal-nav" id="g-cal-prev" aria-label={t3("이전 달", "Previous month", "Mês anterior")}>‹</button>
+        <h2 class="g-h2" id="g-cal-h"></h2>
+        <button type="button" class="g-cal-nav" id="g-cal-next" aria-label={t3("다음 달", "Next month", "Próximo mês")}>›</button>
+      </div>
+      <div class="g-cal-dows" aria-hidden="true" id="g-cal-dows"></div>
+      <div class="g-cal-grid" id="g-cal" role="grid"></div>
+      <div class="g-cal-leg" id="g-cal-leg"></div>
+      <div class="g-day" id="g-day" hidden></div>
+    </section>
+    <section class="g-card" id="g-up-card"><h2 class="g-h2">📅 {M.upTitle}</h2><ul class="g-up" id="g-up"></ul></section>
+    <section class="g-card" id="g-ms-card" aria-labelledby="g-ms-h">
+      <h2 class="g-h2" id="g-ms-h"></h2>
+      <p class="g-mini" id="g-ms-sub"></p>
+      <div id="g-ms"></div>
+    </section>
+    <div class="g-tl" id="g-tl"></div>
+  </div>
+
+  <div id="g-pane-ph" hidden>
+    <section class="g-card">
+      <div class="g-row g-ph-act">
+        <label class="g-btn" for="g-file">📷 {M.addPh}</label>
+        <button type="button" class="g-btn g-ghost" id="g-export">⬇️ {M.exportPh}</button>
+      </div>
+      <p class="g-phnote" id="g-phnote-local">🔒 {t3("사진은 이 기기에만 저장돼요. 가족코드를 연결하면 가족과 함께 볼 수 있어요. 브라우저 데이터를 지우거나 휴대폰을 바꾸면 사라지니 가끔 전체 내려받기로 백업해 두세요.", "Photos stay on this device only until you connect a family code. Clearing browser data or switching phones will lose them — download a ZIP backup now and then.", "As fotos ficam só neste aparelho até você conectar um código da família. Limpar os dados do navegador ou trocar de celular apaga as fotos — baixe um backup em ZIP de vez em quando.")} <a href={lp("/tracker", lang)} class="g-famlink">{t3("가족코드를 연결하면 가족과 사진을 함께 볼 수 있어요 →", "Connect a family code to share photos with your family →", "Conecte um código da família para compartilhar fotos com a família →")}</a></p>
+      <div class="g-fam" id="g-fam" hidden>
+        <p class="g-fam-h">{t3("아기 기록의 가족코드로 가족과 사진을 나눠요. 가족코드가 있어야만 볼 수 있고, 공개 주소는 없어요.", "Shared with your family through the tracker family code. Photos are private to that code — there is no public link.", "Compartilhado com a família pelo código do diário. As fotos são privadas desse código — não há link público.")}</p>
+        <p class="g-mini g-fam-st" id="g-fam-st" role="status"></p>
+        <div class="g-fam-offer" id="g-fam-offer" hidden>
+          <p id="g-fam-offer-t"></p>
+          <div class="g-row"><button type="button" class="g-btn" id="g-fam-share"></button><button type="button" class="g-btn g-ghost" id="g-fam-later">{t3("나중에", "Not now", "Agora não")}</button></div>
+        </div>
+      </div>
+      <p class="g-mini" id="g-ph-status" role="status" hidden></p>
+    </section>
+    <div id="g-gal"></div>
+  </div>
+
+  <input type="file" id="g-file" accept="image/*" multiple hidden />
+
+  <div class="g-view" id="g-view" hidden role="dialog" aria-modal="true">
+    <div class="g-view-in">
+      <button type="button" class="g-view-x" id="g-view-x" aria-label={t3("닫기", "Close", "Fechar")}>✕</button>
+      <img id="g-view-img" alt="" />
+      <p class="g-view-age" id="g-view-age"></p>
+      <p class="g-mini g-view-by" id="g-view-by" hidden></p>
+      <label class="g-lbl" for="g-view-date">{t3("사진 날짜", "Photo date", "Data da foto")}</label>
+      <input type="date" id="g-view-date" class="g-input" />
+      <label class="g-lbl" for="g-view-note">{t3("메모", "Note", "Nota")}</label>
+      <textarea id="g-view-note" class="g-input" rows="2" maxlength="300" placeholder={t3("예: 처음 웃었어요!", "e.g. First smile!", "ex.: Primeiro sorriso!")}></textarea>
+      <div class="g-row g-view-act">
+        <button type="button" class="g-btn" id="g-view-save">{t3("저장", "Save", "Salvar")}</button>
+        <a class="g-btn g-ghost" id="g-view-dl" href="#" download>⬇️ {t3("내려받기", "Download", "Baixar")}</a>
+        <button type="button" class="g-btn g-danger" id="g-view-del">{t3("삭제", "Delete", "Apagar")}</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="g-mini" id="g-status" role="status" hidden></p>
+  <p class="g-disc">{M.disc}</p>
+  <section class="g-src"><h2>{M.srcTitle}</h2><ul>{SOURCES.map((s) => <li><a href={s.url} target="_blank" rel="noopener">{lang === "pt" ? s.pt || s.en : en ? s.en : s.ko}</a></li>)}</ul></section>
+
+</Base>
+
+<script>
+  import { BANDS, MILESTONES } from "../lib/growth-data.js";
+  import { parseYMD, fmtYMD, todayYMD, ageOn, bandFor, bandRange, scheduleFor, upcoming, photoAge, diffDays, addDays, daysInMonth, yearsFor, birthFromAge, earliestRecord, monthView, milestonesFor, milestoneId, customList, customEventsOn, newCustomId, cleanCustomText, CUSTOM_TEXT_MAX } from "../lib/growth-core.js";
+  import { exifDate, makeZip, photoList, photoPut, photoDelete, resizeImage } from "../lib/growth-photos.js";
+  import { T_PT, MON_PT } from "../lib/growth-i18n-pt.js";
+  import { famInfo, makeApi, syncBirth, syncMarks, syncCustoms, syncPhotos, FAM_KEY } from "../lib/growth-sync.js";
+
+  const LG = document.body.dataset.lang === "pt" ? "pt" : document.body.dataset.lang === "en" ? "en" : "ko";
+  const EN = LG !== "ko", PT = LG === "pt"; // EN = any non-Korean page (pt falls back to English where not translated)
+  const LS = "nb_growth_v1";
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const fmtD = (s) => { const p = parseYMD(s); return !p ? "" : PT ? `${String(p.d).padStart(2, "0")}/${String(p.m).padStart(2, "0")}/${p.y}` : EN ? `${MON[p.m - 1]} ${p.d}, ${p.y}` : `${p.y}.${String(p.m).padStart(2, "0")}.${String(p.d).padStart(2, "0")}`; };
+  const T_EN = {
+    now: (dp, d, m, r) => [`Day ${dp}`, `${d} ${d === 1 ? "day" : "days"} old · ${m} ${m === 1 ? "month" : "months"} ${r} ${r === 1 ? "day" : "days"}`],
+    band: (b) => b.id === "after" ? "36 months +" : `${b.from}–${b.to} months`, bandNow: "Now", bandPast: "Done", bandNext: "Ahead",
+    nowIn: (b) => `Now in the ${b} stage`, born: (d) => `Born ${d}`,
+    dIn: (n) => n === 0 ? "Today" : `In ${n} ${n === 1 ? "day" : "days"}`, open: (d) => `Open now · until ${d}`,
+    win: (a, b) => a === b ? a : `${a} – ${b}`, done: "Done", markDone: "Mark done", undo: "Undo", past: "Past",
+    noneUp: "No more scheduled items in this calendar.", ms: (m) => `By ${m} months, most children:`,
+    cat: { social: "Social / emotional", language: "Language / communication", cognitive: "Learning / thinking", movement: "Movement / physical" },
+    play: "Things to try together", photos: "Photos from this time", addHere: "Add photo",
+    before: "Before birth", phAge: (a) => a.before ? "Before birth" : `Day ${a.dplus} · ${a.months} mo ${a.restDays} d`, noPh: "No photos yet. Add one and it lands on the right month automatically.",
+    added: (n) => `Added ${n} ${n === 1 ? "photo" : "photos"} (dated from the photo info when available).`, adding: "Saving photos…", confirmDel: "Delete this photo from this device?", nothingExp: "No photos to download yet.", saved: "Saved",
+    famSyncing: "Syncing with your family…", famOk: (n) => `Up to date · ${n} ${n === 1 ? "photo" : "photos"} in the family album`, famOff: "Offline · photos stay on this device and upload when you're back online.",
+    famPend: (n) => `${n} waiting to upload`, famGone: "This family code is no longer valid. Photos stay on this device.", famErr: (n) => `${n} couldn't be shared (too large or not a photo).`,
+    offer: (n) => `${n} ${n === 1 ? "photo is" : "photos are"} only on this device. Share ${n === 1 ? "it" : "them"} with your family?`, shareBtn: (n) => `Share ${n} with family`,
+    confirmDelShared: "Delete this photo for everyone in your family?", by: (n) => `Added by ${n}`, byFam: "Added by family",
+    badge: { yes: "Shared with family", pending: "Waiting to upload", err: "Not shared" },
+    errFuture: "The birth date can't be in the future.", errBad: "Please enter a valid date.",
+    after: "Past 36 months: next are DTaP 5 · IPV 4 · MMR 2 at ages 4–6, Japanese encephalitis at 6, and checkups at 42–48, 54–60 and 66–71 months.",
+    kind: { vax: "Vaccine", check: "Checkup", benefit: "Benefit", day: "Day" }, d100: (n) => n > 0 ? `100th day in ${n} days` : "",
+    ph: { y: "Year", m: "Month", d: "Day" }, mon: (m) => MON[m - 1], day: (d) => String(d),
+    confirm: (d, a) => `Born ${d} · today is Day ${a.dplus} (${a.months} mo ${a.restDays} d)`, pick: "Pick the year, month and day, or tap a button above.",
+    hint: (d) => `📒 First tracker record: ${d}`, ageBad: "Enter a number (days up to 1500, weeks up to 210, months up to 48).",
+    birthFromFam: "Birth date updated from your family.",
+    calTitle: (y, m) => `${MON[m - 1]} ${y}`,
+    dows: ["S", "M", "T", "W", "T", "F", "S"],
+    leg: "Today · 100th day · First birthday · Items on that day",
+    dayEmpty: "Nothing scheduled this day.",
+    dayItems: (d) => `On ${d}`,
+    dayAddPh: "Add a photo for this day",
+    todayLab: "Today",
+    selLeg: "Selected",
+    daySwipe: "Swipe to see more",
+    addedOn: (n, d) => `Added ${n} ${n === 1 ? "photo" : "photos"} for ${d}.`,
+    msTitle: "Milestones",
+    msSub: "Updates with your baby's age. Tap to mark one as achieved.",
+    msNow: "This stage (now)",
+    msWeek: "This week / now",
+    msPast: "Earlier stages",
+    msNext: "Coming stages",
+    msAchieved: "Achieved",
+    msMark: "Mark achieved",
+    msUndo: "Undo",
+    msWhen: "When? (optional)",
+    msSave: "Save",
+    msCancel: "Cancel",
+    msNone: "No milestones in this list.",
+    msCustom: "Custom",
+    msCustomAdd: "Add your own",
+    msCustomPh: "e.g. Tried rolling over for the first time",
+    msCustomDate: "Date (optional)",
+    msCustomSave: "Add",
+    msCustomEdit: "Edit",
+    msCustomDel: "Delete",
+    msCustomEmpty: "Type something your baby did in this stage.",
+    msCustomTooLong: "Keep it under 80 characters.",
+    msCustomNeed: "Please type a short note first.",
+    dayAddMs: "Write a milestone for this day", msOnCal: "Shown on the calendar", msNoDate: "Add a date to show it on the calendar", msCdc: "Milestone",
+    customsFromFam: "Custom milestones updated from your family.",
+    marksFromFam: "Milestone marks updated from your family.",
+    w: { day: "Day ", photo: (n) => (n === 1 ? " photo" : " photos"), d100: "100th day", dol: "First birthday", photoLeg: "Photo", close: "Close", change: "Change" },
+  };
+  const T_KO = {
+    now: (dp, d, m, r) => [`D+${dp}`, `생후 ${d}일 · ${m}개월 ${r}일`],
+    band: (b) => b.id === "after" ? "36개월 이후" : `${b.from}~${b.to}개월`, bandNow: "지금", bandPast: "지남", bandNext: "예정",
+    nowIn: (b) => `지금은 ${b} 시기예요`, born: (d) => `${d} 출생`,
+    dIn: (n) => n === 0 ? "오늘" : `D-${n}`, open: (d) => `지금 기간 · ${d}까지`,
+    win: (a, b) => a === b ? a : `${a} ~ ${b}`, done: "완료", markDone: "완료 표시", undo: "취소", past: "지남",
+    noneUp: "이 캘린더에 남은 일정이 없어요.", ms: (m) => `${m}개월 무렵 대부분의 아이가 해요`,
+    cat: { social: "사회성·정서", language: "언어·의사소통", cognitive: "인지(학습·생각)", movement: "운동·신체" },
+    play: "함께 해 볼 놀이", photos: "이 시기 사진", addHere: "사진 추가",
+    before: "출생 전", phAge: (a) => a.before ? "출생 전" : `D+${a.dplus} · ${a.months}개월 ${a.restDays}일`, noPh: "아직 사진이 없어요. 사진을 추가하면 찍은 날짜에 맞는 개월에 자동으로 정리돼요.",
+    added: (n) => `사진 ${n}장을 추가했어요 (사진 정보에 날짜가 있으면 그 날짜로 정리했어요).`, adding: "사진 저장 중…", confirmDel: "이 사진을 기기에서 삭제할까요?", nothingExp: "내려받을 사진이 아직 없어요.", saved: "저장했어요",
+    famSyncing: "가족과 맞추는 중…", famOk: (n) => `최신 상태예요 · 가족 앨범 사진 ${n}장`, famOff: "오프라인이에요 · 사진은 이 기기에 그대로 있고 연결되면 올라가요.",
+    famPend: (n) => `올라갈 사진 ${n}장 대기 중`, famGone: "가족코드가 더 이상 유효하지 않아요. 사진은 이 기기에 남아 있어요.", famErr: (n) => `${n}장은 공유하지 못했어요 (너무 크거나 사진이 아니에요).`,
+    offer: (n) => `이 기기에만 있는 사진이 ${n}장 있어요. 가족과 함께 볼까요?`, shareBtn: (n) => `${n}장 가족과 공유`,
+    confirmDelShared: "가족 모두에게서 이 사진을 삭제할까요?", by: (n) => `${n}님이 올린 사진`, byFam: "가족이 올린 사진",
+    badge: { yes: "가족과 공유됨", pending: "올라가기 대기 중", err: "공유 안 됨" },
+    errFuture: "생일은 오늘 이후일 수 없어요.", errBad: "올바른 날짜를 입력해 주세요.",
+    after: "36개월 이후: 만 4~6세 DTaP 5차·IPV 4차·MMR 2차, 만 6세 일본뇌염, 42~48·54~60·66~71개월 건강검진이 이어져요.",
+    kind: { vax: "예방접종", check: "건강검진", benefit: "혜택", day: "기념일" }, d100: (n) => n > 0 ? `백일까지 D-${n}` : "",
+    ph: { y: "년도", m: "월", d: "일" }, mon: (m) => String(m), day: (d) => String(d),
+    confirm: (d, a) => `${d} 출생 · 오늘 D+${a.dplus} (${a.months}개월 ${a.restDays}일)`, pick: "년·월·일을 고르거나 위 버튼을 눌러 주세요.",
+    hint: (d) => `📒 첫 기록일 ${d}`, ageBad: "숫자를 넣어 주세요 (일은 1500, 주는 210, 개월은 48까지).",
+    birthFromFam: "가족이 저장한 생일로 맞췄어요.",
+    calTitle: (y, m) => `${y}년 ${m}월`,
+    dows: ["일", "월", "화", "수", "목", "금", "토"],
+    leg: "오늘 · 백일 · 첫돌 · 그날 일정",
+    dayEmpty: "이 날에는 일정이 없어요.",
+    dayItems: (d) => `${d} 일정`,
+    dayAddPh: "이 날 사진 추가",
+    todayLab: "오늘",
+    selLeg: "선택",
+    daySwipe: "밀어 넘기면 더 볼 수 있어요",
+    addedOn: (n, d) => `${d} 사진 ${n}장을 추가했어요.`,
+    msTitle: "발달 이정표",
+    msSub: "아기 나이에 맞춰 자동으로 바뀌어요. 해낸 이정표는 눌러 표시할 수 있어요.",
+    msNow: "지금 시기",
+    msWeek: "이번 주 / 지금",
+    msPast: "지난 시기",
+    msNext: "다가올 시기",
+    msAchieved: "해냈어요",
+    msMark: "해냄 표시",
+    msUndo: "취소",
+    msWhen: "언제 했나요? (선택)",
+    msSave: "저장",
+    msCancel: "닫기",
+    msNone: "표시할 이정표가 없어요.",
+    msCustom: "직접 입력",
+    msCustomAdd: "직접 적기",
+    msCustomPh: "예: 처음 뒤집기 시도했어요",
+    msCustomDate: "날짜 (선택)",
+    msCustomSave: "추가",
+    msCustomEdit: "수정",
+    msCustomDel: "삭제",
+    msCustomEmpty: "이 시기에 아기가 한 일을 적어 주세요.",
+    msCustomTooLong: "80자 이내로 적어 주세요.",
+    msCustomNeed: "내용을 먼저 적어 주세요.",
+    dayAddMs: "이 날 이정표 적기", msOnCal: "달력에 표시돼요", msNoDate: "날짜를 넣으면 달력에 표시돼요", msCdc: "발달 이정표",
+    customsFromFam: "가족이 적은 이정표를 맞췄어요.",
+    marksFromFam: "가족이 표시한 이정표를 맞췄어요.",
+    w: { day: "D+", photo: () => "장 사진", d100: "백일", dol: "첫돌", photoLeg: "사진", close: "닫기", change: "생일 바꾸기" },
+  };
+  const T = PT ? { ...T_EN, ...T_PT } : EN ? T_EN : T_KO;
+  const fmtLong = (s) => { const p = parseYMD(s); return !p ? "" : PT ? `${p.d} de ${MON_PT[p.m - 1]} de ${p.y}` : EN ? `${MON[p.m - 1]} ${p.d}, ${p.y}` : `${p.y}년 ${p.m}월 ${p.d}일`; };
+  const ICON = { vax: "💉", check: "🩺", benefit: "💰", day: "🎉", custom: "✏️" };
+  const L = (o, k) => k ? (PT ? o[k + "Pt"] || o[k + "En"] : EN ? o[k + "En"] : o[k + "Ko"]) || "" : PT ? o.pt || o.en : EN ? o.en : o.ko;
+  const PT_PAGES = ["/tracker", "/growth", "/guide/parent-allowance-deadline", "/guide/parent-and-child-allowance", "/guide/birth-registration-checklist"];
+  const lp = (p) => (PT && PT_PAGES.includes(p) ? "/pt-br" : EN ? "/en" : "") + p; // pt: pages without a Portuguese version open in English
+  const msText = (m) => (PT ? m.pt || m.en : EN ? m.en : m.ko);
+
+  let st = (() => { try { return JSON.parse(localStorage.getItem(LS) || "{}") || {}; } catch { return {}; } })();
+  if (!st.done || typeof st.done !== "object") st.done = {};
+  if (!st.marks || typeof st.marks !== "object") st.marks = {};
+  if (!st.custom || typeof st.custom !== "object") st.custom = {};
+  let calYM = null; // {y,m} currently shown month
+  let selDay = todayYMD(); // default to today so the add-photo button is visible on first load
+  try {
+    const qDate = new URLSearchParams(location.search).get("date");
+    if (qDate && parseYMD(qDate)) {
+      selDay = qDate;
+      const qp = parseYMD(qDate);
+      calYM = { y: qp.y, m: qp.m };
+    }
+  } catch {}
+  let addForDate = null; // when set, the next file-input photos use this date
+  let markEdit = null; // milestone id being dated
+  let customEdit = null; // custom id being edited, or "new"
+  let customDay = null; // "new" opened from a calendar day: the form sits in the day panel with that date filled in
+  if (!Array.isArray(st.delq)) st.delq = [];
+  const saveSt = () => { try { localStorage.setItem(LS, JSON.stringify(st)); } catch {} };
+  let photos = [], urls = [], tab = "tl", viewing = null, editing = false;
+  const today = () => todayYMD();
+
+  // ---------- birth-date picker ----------
+  const opt = (v, t, sel) => `<option value="${v}"${sel ? " selected" : ""}>${esc(t)}</option>`;
+  function fillDays() {
+    const y = +$("g-y").value || parseYMD(today()).y, m = +$("g-m").value, cur = +$("g-d").value;
+    const n = m ? daysInMonth(y, m) : 31;
+    $("g-d").innerHTML = opt("", T.ph.d, !cur) + Array.from({ length: n }, (_, i) => opt(i + 1, T.day(i + 1), cur === i + 1)).join("");
+    if (cur > n) $("g-d").value = String(n); // 31 -> 30 / 28 when the month gets shorter
+  }
+  function setPick(v) {
+    const p = parseYMD(v);
+    $("g-y").innerHTML = opt("", T.ph.y, !p) + yearsFor(today(), v).map((y) => opt(y, EN ? y : y, p && p.y === y)).join("");
+    $("g-m").innerHTML = opt("", T.ph.m, !p) + Array.from({ length: 12 }, (_, i) => opt(i + 1, T.mon(i + 1), p && p.m === i + 1)).join("");
+    $("g-d").innerHTML = ""; if (p) $("g-d").innerHTML = opt(p.d, p.d, true);
+    fillDays(); if (p) $("g-d").value = String(p.d);
+    confirmLine();
+  }
+  const picked = () => { const y = +$("g-y").value, m = +$("g-m").value, d = +$("g-d").value; return y && m && d ? fmtYMD({ y, m, d }) : ""; };
+  function confirmLine() {
+    const v = picked(), c = $("g-confirm"); $("g-err").hidden = true;
+    c.classList.remove("bad", "ok");
+    if (!v) { c.textContent = T.pick; return ""; }
+    if (diffDays(today(), v) > 0) { c.textContent = T.errFuture; c.classList.add("bad"); return ""; }
+    c.textContent = "✅ " + T.confirm(fmtLong(v), ageOn(v, today())); c.classList.add("ok");
+    return v;
+  }
+  function setup(show) {
+    const el = $("g-setup"), was = !el.hidden;
+    el.hidden = !show;
+    if (!show || was) return;
+    setPick(st.birth || ""); $("g-age-n").value = "";
+    $("g-cancel").hidden = !st.birth;
+    let hint = null;
+    try { hint = earliestRecord((JSON.parse(localStorage.getItem("nb_tracker_v1") || "{}") || {}).entries, today()); } catch {}
+    const h = $("g-hint"); h.hidden = !hint || hint === st.birth;
+    if (hint) { h.textContent = T.hint(fmtLong(hint)); h.dataset.date = hint; }
+  }
+  for (const id of ["g-y", "g-m"]) $(id).addEventListener("change", () => { fillDays(); $("g-age-n").value = ""; confirmLine(); });
+  $("g-d").addEventListener("change", () => { $("g-age-n").value = ""; confirmLine(); });
+  const fromAge = () => {
+    const raw = $("g-age-n").value; if (raw === "") { confirmLine(); return; }
+    const v = birthFromAge(today(), raw, $("g-age-u").value);
+    if (!v) { $("g-confirm").textContent = T.ageBad; $("g-confirm").className = "g-confirm bad"; return; }
+    const keep = $("g-age-n").value; setPick(v); $("g-age-n").value = keep;
+  };
+  $("g-age-n").addEventListener("input", fromAge);
+  $("g-age-u").addEventListener("change", fromAge);
+  document.querySelectorAll("[data-quick]").forEach((b) => b.addEventListener("click", () => { $("g-age-n").value = ""; setPick(addDays(today(), -Number(b.dataset.quick))); }));
+  $("g-hint").addEventListener("click", () => { $("g-age-n").value = ""; setPick($("g-hint").dataset.date); });
+  $("g-save").addEventListener("click", () => {
+    const v = confirmLine(), e = $("g-err");
+    if (!v) { e.textContent = picked() ? T.errFuture : T.errBad; e.hidden = false; return; }
+    e.hidden = true; st.birth = v; st.birthAt = Date.now(); saveSt(); $("g-setup").hidden = true; render(); kick();
+  });
+  $("g-cancel").addEventListener("click", () => { $("g-setup").hidden = true; render(); });
+
+  function itemRow(x, compact) {
+    const done = !!st.done[x.id];
+    const when = x.status === "now" ? T.open(fmtD(x.end)) : x.status === "upcoming" ? T.dIn(x.daysUntil) : (done ? T.done : T.past);
+    const cls = ["g-it", x.kind, x.status, done ? "done" : ""].join(" ");
+    const title = x.href ? `<a href="${lp(x.href)}">${esc(L(x, ""))}</a>` : esc(L(x, ""));
+    const note = L(x, "note");
+    const canDone = x.kind === "vax" || x.kind === "check" || (x.kind === "benefit" && x.id === "pay60");
+    const btn = canDone && x.status !== "upcoming" ? `<button type="button" class="g-done" data-done="${x.id}" aria-pressed="${done}">${done ? "✓ " + esc(T.done) : esc(T.markDone)}</button>` : "";
+    return `<li class="${cls}"><span class="g-ic" aria-hidden="true">${ICON[x.kind]}</span><span class="g-tx"><b>${title}</b>`
+      + `<small>${esc(T.win(fmtD(x.start), fmtD(x.end)))}${note && !compact ? " · " + esc(note) : ""}</small></span>`
+      + `<span class="g-when">${esc(when)}</span>${btn}</li>`;
+  }
+
+  function thumbs(list) {
+    return list.map((p) => { const u = URL.createObjectURL(p.thumb || p.blob); urls.push(u); const a = photoAge(st.birth, p.date);
+      return `<button type="button" class="g-th" data-ph="${p.id}" title="${esc(p.note || "")}"><img src="${u}" alt="${esc(p.note || T.phAge(a))}" loading="lazy"><span>${esc(a ? (a.before ? T.before : T.w.day + a.dplus) : "")}</span>${p.note ? `<i>${esc(p.note)}</i>` : ""}${fam && p.shared && T.badge[p.shared] ? `<em class="g-shb ${p.shared}" title="${esc(T.badge[p.shared])}" aria-label="${esc(T.badge[p.shared])}">${p.shared === "yes" ? "👨‍👩‍👧" : p.shared === "pending" ? "⏳" : "⚠️"}</em>` : ""}</button>`; }).join("");
+  }
+  const byBand = (id) => photos.filter((p) => { const a = photoAge(st.birth, p.date); return a && a.band === id; });
+  const dayPhotos = (date) => photos.filter((p) => p.date === date);
+
+  function render() { renderMain(); famUI(); }
+  function renderCal(td, sch) {
+    const p = parseYMD(td);
+    if (!calYM) calYM = { y: p.y, m: p.m };
+    const mv = monthView(st.birth, td, calYM.y, calYM.m);
+    $("g-cal-h").textContent = T.calTitle(calYM.y, calYM.m);
+    $("g-cal-dows").innerHTML = T.dows.map((d) => `<span>${esc(d)}</span>`).join("");
+    // milestones the parents recorded themselves: custom notes with a date + CDC milestones marked achieved on a date
+    const marked = milestonesFor(st.birth, td, st.marks, MILESTONES).filter((m) => m.achieved && m.achievedAt);
+    const markEventsOn = (date) => marked.filter((m) => m.achievedAt === date).map((m) => ({ id: m.id, kind: "ms", start: date, end: date, text: msText(m), achieved: true }));
+    const ownEventsOn = (date) => customEventsOn(st.custom, date).concat(markEventsOn(date));
+    const dayEvents = (date) => {
+      const cell = mv.cells.find((c) => c && c.date === date);
+      const base = cell ? cell.events.slice() : eventsFallback(sch, date);
+      return base.concat(ownEventsOn(date));
+    };
+    $("g-cal").innerHTML = mv.cells.map((c) => {
+      if (!c) return `<div class="g-cell empty" aria-hidden="true"></div>`;
+      const tags = c.tags.join(" ");
+      const own = ownEventsOn(c.date);
+      const evs = own.concat(c.events); // own milestones first, so their dot is never hidden behind "+more"
+      const list = dayPhotos(c.date);
+      const phn = list.length;
+      const n = evs.length;
+      const dots = evs.slice(0, 3).map((e) => `<i class="g-dotk ${e.kind}"></i>`).join("") + (n > 3 ? `<i class="g-dotk more"></i>` : "");
+      const sel = c.date === selDay ? " sel" : "";
+      const isToday = c.tags.includes("today");
+      const lab = `${c.date}${isToday ? ", " + T.todayLab : ""}${c.date === selDay ? ", " + T.selLeg : ""}${phn ? ", " + phn + T.w.photo(phn) : ""}${own.length ? ", ✏️ " + own.map((o) => o.text || o.ko).join(" / ") : ""}${n ? ", " + n : ""}`;
+      let thumb = "";
+      if (list[0]) {
+        const u = URL.createObjectURL(list[0].thumb || list[0].blob);
+        urls.push(u);
+        thumb = `<img class="g-cell-ph" src="${u}" alt="" aria-hidden="true">`;
+      }
+      const count = phn > 1 ? `<span class="g-cell-pn">${phn}</span>` : "";
+      const todayLab = isToday ? `<span class="g-today-lab">${esc(T.todayLab)}</span>` : "";
+      return `<button type="button" class="g-cell ${tags}${sel}${phn ? " has-ph" : ""}${own.length ? " has-ms" : ""}" data-day="${c.date}" aria-pressed="${c.date === selDay ? "true" : "false"}" aria-label="${esc(lab)}">${thumb}${count}<span class="g-dn">${+c.date.slice(8)}</span>${todayLab}<span class="g-dots">${dots}</span></button>`;
+    }).join("");
+    const legi = (cls, label) => `<span class="g-legi"><span class="g-leg ${cls}"></span>${esc(label)}</span>`;
+    $("g-cal-leg").innerHTML = [legi("today", T.todayLab), legi("sel", T.selLeg), legi("d100", T.w.d100), legi("dol", T.w.dol), legi("custom", T.msCustom), legi("photo", T.w.photoLeg)].join("");
+    // day panel
+    const day = $("g-day");
+    if (!selDay) { day.hidden = true; day.innerHTML = ""; return; }
+    const ev = dayEvents(selDay);
+    day.hidden = false;
+    const customRows = ownEventsOn(selDay).map((x) => {
+      const ach = x.achieved ? " done" : "";
+      const kind = x.kind === "ms" ? T.msCdc : T.msCustom;
+      return `<li class="g-it custom now${ach}" data-own="${esc(x.id)}"><span class="g-ic" aria-hidden="true">${x.kind === "ms" ? "🌱" : "✏️"}</span><span class="g-tx"><b>${esc(x.text || x.ko)}</b><small>${esc(kind)}</small></span><span class="g-when">${x.achieved ? "✓ " + esc(T.msAchieved) : esc(T.msCustom)}</span></li>`;
+    }).join("");
+    const schedRows = customRows + ev.filter((x) => x.kind !== "custom" && x.kind !== "ms").map((x) => itemRow(x, true)).join("");
+    const dayForm = customEdit === "new" && customDay === selDay
+      ? `<div class="g-day-ms">${customForm("new")}</div>`
+      : `<button type="button" class="g-btn g-ghost g-day-msadd" data-custom="new" data-cact="cnewday">✏️ ${esc(T.dayAddMs)}</button>`;
+    const ph = dayPhotos(selDay);
+    const hero = ph.length ? `<div class="g-day-ph"><div class="g-day-hero" id="g-day-hero">${ph.map((p) => {
+      const u = URL.createObjectURL(p.blob || p.thumb); urls.push(u);
+      const a = photoAge(st.birth, p.date);
+      const cap = a ? (a.before ? T.before : T.w.day + a.dplus) : "";
+      return `<button type="button" class="g-day-slide" data-ph="${p.id}" aria-label="${esc(p.note || cap || T.photos)}"><img src="${u}" alt="${esc(p.note || cap)}">${cap ? `<span>${esc(cap)}</span>` : ""}${p.note ? `<i>${esc(p.note)}</i>` : ""}</button>`;
+    }).join("")}</div>${ph.length > 1 ? `<div class="g-day-dots" aria-hidden="true">${ph.map((_, i) => `<i${i === 0 ? ' class="on"' : ""}></i>`).join("")}</div><p class="g-mini g-day-phc">${esc(T.daySwipe)}</p>` : ""}</div>` : "";
+    const addBtn = `<label class="g-btn${ph.length ? " g-ghost" : ""}" id="g-day-add" for="g-file">📷 ${esc(T.dayAddPh)}</label>`;
+    day.innerHTML = `<div class="g-day-h"><b>${esc(T.dayItems(fmtD(selDay)))}</b><button type="button" class="g-link" id="g-day-x">${esc(T.w.close)}</button></div>`
+      + `<div class="g-row g-day-acts">${addBtn}</div>`
+      + hero
+      + (ev.length ? `<ul class="g-up">${schedRows}</ul>` : (ph.length ? "" : `<p class="g-mini">${esc(T.dayEmpty)}</p>`))
+      + dayForm;
+    const x = $("g-day-x"); if (x) x.onclick = () => { selDay = null; renderCal(td, sch); };
+    const heroEl = $("g-day-hero");
+    if (heroEl && ph.length > 1) {
+      heroEl.addEventListener("scroll", () => {
+        const i = Math.round(heroEl.scrollLeft / Math.max(1, heroEl.clientWidth));
+        heroEl.parentElement.querySelectorAll(".g-day-dots i").forEach((el, j) => el.classList.toggle("on", j === i));
+      }, { passive: true });
+    }
+  }
+  function eventsFallback(sch, date) {
+    return sch.filter((x) => diffDays(x.start, date) >= 0 && diffDays(date, x.end) >= 0);
+  }
+  function customForm(id) {
+    const cur = id && id !== "new" ? (st.custom[id] || {}) : {};
+    const text = cur.text || "";
+    // a new note defaults to the day picked on the calendar (or today), so it shows up on the calendar right away
+    const at = cur.at || (id === "new" ? ((customDay && diffDays(today(), customDay) <= 0) ? customDay : today()) : "");
+    const saveAct = id && id !== "new" ? "csave" : "cadd";
+    const saveLbl = id && id !== "new" ? T.msSave : T.msCustomSave;
+    return `<div class="g-ms-edit g-custom-form" data-custom-edit="${esc(id || "new")}">`
+      + `<label class="g-mini">${esc(T.msCustomAdd)}<input type="text" class="g-input g-custom-text" maxlength="${CUSTOM_TEXT_MAX}" placeholder="${esc(T.msCustomPh)}" value="${esc(text)}" /></label>`
+      + `<label class="g-mini">${esc(T.msCustomDate)} <input type="date" class="g-input g-ms-date" max="${today()}" value="${esc(at)}" /></label>`
+      + `<p class="g-err g-custom-err" hidden></p>`
+      + `<div class="g-row"><button type="button" class="g-btn" data-custom="${esc(id || "new")}" data-cact="${saveAct}">${esc(saveLbl)}</button>`
+      + `<button type="button" class="g-btn g-ghost" data-custom="${esc(id || "new")}" data-cact="ccancel">${esc(T.msCancel)}</button></div></div>`;
+  }
+  function renderMs(td, age, cur) {
+    $("g-ms-h").textContent = "🌱 " + T.msTitle;
+    $("g-ms-sub").textContent = T.msSub;
+    const all = milestonesFor(st.birth, td, st.marks, MILESTONES);
+    const customs = customList(st.custom);
+    const groups = [
+      { key: "now", title: T.msNow, list: all.filter((m) => m.status === "now") },
+      { key: "past", title: T.msPast, list: all.filter((m) => m.status === "past") },
+      { key: "upcoming", title: T.msNext, list: all.filter((m) => m.status === "upcoming") },
+    ];
+    let html = "";
+    for (const g of groups) {
+      const isNow = g.key === "now";
+      if (!g.list.length && !(isNow && (customs.length || customEdit))) continue;
+      const count = g.list.length + (isNow ? customs.length : 0);
+      const open = isNow ? " open" : "";
+      html += `<details class="g-ms-g ${g.key}"${open}><summary><b>${esc(g.title)}</b><em class="g-chip ${isNow ? "now" : g.key === "past" ? "past" : "next"}">${count}</em></summary><ul class="g-ms-list">`;
+      if (isNow) {
+        for (const c of customs) {
+          if (customEdit === c.id) { html += `<li class="g-ms-it custom">${customForm(c.id)}</li>`; continue; }
+          const ach = c.achieved ? " achieved" : "";
+          const when = c.at ? ` · ${fmtD(c.at)} · 📅 ${T.msOnCal}` : ` · ${T.msNoDate}`;
+          const btn = c.achieved
+            ? `<button type="button" class="g-done" data-custom="${c.id}" data-cact="cundo" aria-pressed="true">✓ ${esc(T.msAchieved)}${esc(when)}</button>`
+            : `<button type="button" class="g-done" data-custom="${c.id}" data-cact="cmark">${esc(T.msMark)}</button>`;
+          html += `<li class="g-ms-it now custom${ach}"><span class="g-tx"><b>${esc(c.text)}</b><small>${esc(T.msCustom)}${when ? esc(when) : ""}</small></span>${btn}`
+            + `<button type="button" class="g-link" data-custom="${c.id}" data-cact="cedit">${esc(T.msCustomEdit)}</button>`
+            + `<button type="button" class="g-link g-danger-link" data-custom="${c.id}" data-cact="cdel">${esc(T.msCustomDel)}</button></li>`;
+        }
+        if (customEdit === "new" && !customDay) html += `<li class="g-ms-it custom">${customForm("new")}</li>`;
+        else html += `<li class="g-ms-it custom-add"><button type="button" class="g-btn g-ghost g-custom-add" data-custom="new" data-cact="cnew">✏️ ${esc(T.msCustomAdd)}</button></li>`;
+      }
+      for (const m of g.list) {
+        const text = msText(m);
+        const hi = m.highlight ? " hi" : "";
+        const ach = m.achieved ? " achieved" : "";
+        const when = m.achievedAt ? ` · ${fmtD(m.achievedAt)}` : "";
+        const btn = m.achieved
+          ? `<button type="button" class="g-done" data-ms="${m.id}" data-act="undo" aria-pressed="true">✓ ${esc(T.msAchieved)}${esc(when)}</button>`
+          : `<button type="button" class="g-done" data-ms="${m.id}" data-act="mark">${esc(T.msMark)}</button>`;
+        const edit = markEdit === m.id ? `<div class="g-ms-edit" data-ms-edit="${m.id}"><label class="g-mini">${esc(T.msWhen)} <input type="date" class="g-input g-ms-date" max="${td}" value="${td}" /></label><div class="g-row"><button type="button" class="g-btn" data-ms="${m.id}" data-act="save">${esc(T.msSave)}</button><button type="button" class="g-btn g-ghost" data-ms="${m.id}" data-act="cancel">${esc(T.msCancel)}</button></div></div>` : "";
+        html += `<li class="g-ms-it ${m.status}${ach}${hi}"><span class="g-tx"><b>${esc(text)}</b><small>${esc(T.cat[m.cat])}${m.highlight ? " · " + esc(T.msWeek) : ""}</small></span>${btn}${edit}</li>`;
+      }
+      html += `</ul></details>`;
+    }
+    $("g-ms").innerHTML = html || `<p class="g-mini">${esc(T.msNone)}</p>`;
+  }
+  function renderMain() {
+    urls.forEach((u) => URL.revokeObjectURL(u)); urls = [];
+    const has = !!st.birth;
+    if (!has) setup(true); else if ($("g-setup").hidden) setup(false);
+    $("g-now").hidden = !has;
+    if ($("g-seg")) $("g-seg").hidden = !has;
+    $("g-pane-tl").hidden = !has || tab !== "tl";
+    if ($("g-pane-ph")) $("g-pane-ph").hidden = !has || tab !== "ph";
+    if ($("g-tab-tl")) $("g-tab-tl").setAttribute("aria-selected", String(tab === "tl"));
+    if ($("g-tab-ph")) $("g-tab-ph").setAttribute("aria-selected", String(tab === "ph"));
+    if ($("g-ph-n")) $("g-ph-n").textContent = photos.length ? `(${photos.length})` : "";
+    if (!has) return;
+    const td = today(), age = ageOn(st.birth, td), cur = bandFor(age.months);
+    const [big, small] = T.now(age.dplus, age.days, age.months, age.restDays);
+    const sch = scheduleFor(st.birth, td);
+    const d100 = sch.find((x) => x.id === "d100");
+    $("g-now").innerHTML = `<div class="g-now-top"><div><b class="g-dplus">${esc(big)}</b><span class="g-age">${esc(small)}</span></div>`
+      + `<button type="button" class="g-link" id="g-change">${esc(T.w.change)}</button></div>`
+      + `<p class="g-now-band">🌱 ${esc(T.nowIn(T.band(cur)))}${d100 && T.d100(d100.daysUntil) ? ` · 🎉 ${esc(T.d100(d100.daysUntil))}` : ""}</p>`
+      + `<p class="g-mini">${esc(T.born(fmtD(st.birth)))}</p>`;
+    $("g-change").onclick = () => { editing = true; setup(true); editing = false; $("g-setup").scrollIntoView({ block: "start", behavior: "smooth" }); $("g-y").focus({ preventScroll: true }); };
+
+    renderCal(td, sch);
+    const up = upcoming(sch.filter((x) => !st.done[x.id]), 6);
+    $("g-up").innerHTML = up.length ? up.map((x) => itemRow(x, true)).join("") : `<li class="g-empty">${esc(T.noneUp)}</li>`;
+    renderMs(td, age, cur);
+
+    let html = "";
+    for (const b of BANDS) {
+      const r = bandRange(st.birth, b), state = b.id === cur.id ? "now" : b.to <= age.months ? "past" : "next";
+      const ms = MILESTONES[b.id], its = sch.filter((x) => x.band === b.id);
+      const cats = ["social", "language", "cognitive", "movement"].map((k) => {
+        const lines = ms[k].map((pair, idx) => {
+          const id = milestoneId(b.id, k, idx);
+          const mark = st.marks[id] && !st.marks[id].deleted ? st.marks[id] : null;
+          const cls = mark ? ' class="g-ms-done"' : "";
+          const tick = mark ? " ✓" : "";
+          return `<li${cls}>${esc(PT ? pair[2] || pair[1] : EN ? pair[1] : pair[0])}${tick}</li>`;
+        }).join("");
+        return `<div class="g-cat"><h4>${esc(T.cat[k])}</h4><ul>${lines}</ul></div>`;
+      }).join("");
+      const ph = byBand(b.id);
+      html += `<details class="g-band ${state}" id="band-${b.id}"${state === "now" ? " open" : ""}>`
+        + `<summary><span class="g-dot" aria-hidden="true"></span><span class="g-bt"><b>${esc(T.band(b))}</b><small>${esc(T.win(fmtD(r.start), fmtD(r.end)))}</small></span>`
+        + `<em class="g-chip ${state}">${esc(state === "now" ? T.bandNow : state === "past" ? T.bandPast : T.bandNext)}</em>${ph.length ? `<span class="g-phc">📷 ${ph.length}</span>` : ""}</summary>`
+        + `<div class="g-body">${its.length ? `<ul class="g-its">${its.map((x) => itemRow(x)).join("")}</ul>` : ""}`
+        + `<h3 class="g-h3">${esc(T.ms(b.to))}</h3><div class="g-cats">${cats}</div>`
+        + `<h3 class="g-h3">${esc(T.play)}</h3><ul class="g-play">${ms.play.map((m) => `<li>${esc(PT ? m[2] || m[1] : EN ? m[1] : m[0])}</li>`).join("")}</ul>`
+        + `<h3 class="g-h3">📷 ${esc(T.photos)}</h3><div class="g-ths">${thumbs(ph)}<label class="g-th g-add" for="g-file">＋<span>${esc(T.addHere)}</span></label></div>`
+        + `</div></details>`;
+    }
+    const after = byBand("after");
+    html += `<div class="g-band after${cur.id === "after" ? " now" : ""}"><p class="g-mini">${esc(T.after)}</p>${after.length ? `<div class="g-ths">${thumbs(after)}</div>` : ""}</div>`;
+    $("g-tl").innerHTML = html;
+
+    if ($("g-gal")) {
+      if (!photos.length) $("g-gal").innerHTML = `<p class="g-empty g-card">${esc(T.noPh)}</p>`;
+      else {
+        const groups = [["before", T.before], ...BANDS.map((b) => [b.id, T.band(b)]), ["after", T.band({ id: "after" })]];
+        $("g-gal").innerHTML = groups.map(([id, name]) => { const l = byBand(id); return l.length ? `<section class="g-card g-galg"><h2 class="g-h2">${esc(name)} <small>${l.length}</small></h2><div class="g-ths">${thumbs(l)}</div></section>` : ""; }).join("");
+      }
+    }
+  }
+
+  // view-only device, or one whose view-only link stopped working (it stays read-only until it rejoins or picks its own log)
+  const viewGone = () => !fam && !!localStorage.getItem("nb_tracker_v1_viewgone");
+  const viewOnly = () => !!(fam && fam.view) || viewGone();
+  document.addEventListener("click", (e) => {
+    // view-only link: milestone marks, custom notes, birth date and photo edits are all blocked (the server refuses them too)
+    if (viewOnly() && e.target.closest("[data-ms],[data-custom],label[for='g-file'],#g-change,#g-view-save,#g-view-del,#g-fam-share")) { e.preventDefault(); e.stopImmediatePropagation(); return; }
+    const d = e.target.closest("[data-done]");
+    if (d) { e.preventDefault(); const id = d.dataset.done; if (st.done[id]) delete st.done[id]; else st.done[id] = true; saveSt(); render(); return; }
+    const fileLab = e.target.closest("label[for='g-file']");
+    if (fileLab) {
+      addForDate = fileLab.id === "g-day-add" ? selDay : null;
+      return;
+    }
+    const phb = e.target.closest("[data-ph]");
+    if (phb) { e.preventDefault(); openView(phb.dataset.ph); return; }
+    const cell = e.target.closest("[data-day]");
+    if (cell) { e.preventDefault(); selDay = cell.dataset.day; render(); const add = $("g-day-add"); if (add) add.scrollIntoView({ block: "nearest", behavior: "smooth" }); return; }
+    if (e.target.id === "g-cal-prev") { e.preventDefault(); if (!calYM) return; calYM.m--; if (calYM.m < 1) { calYM.m = 12; calYM.y--; } selDay = null; render(); return; }
+    if (e.target.id === "g-cal-next") { e.preventDefault(); if (!calYM) return; calYM.m++; if (calYM.m > 12) { calYM.m = 1; calYM.y++; } selDay = null; render(); return; }
+    const ms = e.target.closest("[data-ms]");
+    if (ms) {
+      e.preventDefault();
+      const id = ms.dataset.ms, act = ms.dataset.act;
+      if (act === "mark") { markEdit = id; customEdit = null; render(); return; }
+      if (act === "cancel") { markEdit = null; render(); return; }
+      if (act === "undo") {
+        st.marks[id] = { at: null, updatedAt: Date.now(), deleted: true }; markEdit = null; saveSt(); render(); kick(); return;
+      }
+      if (act === "save") {
+        const box = document.querySelector(`[data-ms-edit="${id}"]`);
+        const raw = box ? box.querySelector(".g-ms-date")?.value : "";
+        const at = raw && parseYMD(raw) ? raw : null;
+        st.marks[id] = { at, updatedAt: Date.now(), deleted: false }; markEdit = null; saveSt(); render(); kick(); return;
+      }
+    }
+    const cu = e.target.closest("[data-custom]");
+    if (cu) {
+      e.preventDefault();
+      const id = cu.dataset.custom, act = cu.dataset.cact;
+      if (act === "cnew") { customEdit = "new"; customDay = null; markEdit = null; render(); return; }
+      if (act === "cnewday") { customEdit = "new"; customDay = selDay; markEdit = null; render(); const f = document.querySelector(".g-day-ms .g-custom-text"); if (f) f.focus(); return; }
+      if (act === "ccancel") { customEdit = null; customDay = null; render(); return; }
+      if (act === "cedit") { customEdit = id; markEdit = null; render(); return; }
+      if (act === "cdel") {
+        const cur = st.custom[id] || {};
+        st.custom[id] = { ...cur, text: cur.text || "", at: null, achieved: false, updatedAt: Date.now(), deleted: true };
+        customEdit = null; saveSt(); render(); kick(); return;
+      }
+      if (act === "cmark") {
+        const cur = st.custom[id]; if (!cur || cur.deleted) return;
+        st.custom[id] = { ...cur, achieved: true, at: cur.at || today(), updatedAt: Date.now(), deleted: false };
+        saveSt(); render(); kick(); return;
+      }
+      if (act === "cundo") {
+        const cur = st.custom[id]; if (!cur || cur.deleted) return;
+        st.custom[id] = { ...cur, achieved: false, updatedAt: Date.now(), deleted: false };
+        saveSt(); render(); kick(); return;
+      }
+      if (act === "cadd" || act === "csave") {
+        const box = document.querySelector(`[data-custom-edit="${id}"]`);
+        const err = box && box.querySelector(".g-custom-err");
+        const raw = box ? box.querySelector(".g-custom-text")?.value : "";
+        const text = cleanCustomText(raw);
+        if (!text) {
+          if (err) { err.textContent = (raw || "").trim().length > CUSTOM_TEXT_MAX ? T.msCustomTooLong : T.msCustomNeed; err.hidden = false; }
+          return;
+        }
+        const dateRaw = box ? box.querySelector(".g-ms-date")?.value : "";
+        const at = dateRaw && parseYMD(dateRaw) ? dateRaw : null;
+        const nid = act === "cadd" ? newCustomId() : id;
+        const prev = st.custom[nid] || {};
+        st.custom[nid] = { text, at, achieved: !!prev.achieved && act === "csave", updatedAt: Date.now(), deleted: false };
+        if (at) { selDay = at; const p = parseYMD(at); calYM = { y: p.y, m: p.m }; } // jump the calendar to that day
+        customEdit = null; customDay = null; saveSt(); render(); kick(); return;
+      }
+    }
+  });
+
+  if ($("g-tab-tl")) $("g-tab-tl").addEventListener("click", () => { tab = "tl"; render(); });
+  if ($("g-tab-ph")) $("g-tab-ph").addEventListener("click", () => { tab = "ph"; render(); });
+
+  const status = (t) => { const s = $("g-status"); s.textContent = t; s.hidden = !t; };
+  const phStatus = (t) => { const s = $("g-ph-status"); if (!s) return; s.textContent = t; s.hidden = !t; };
+
+  // ---------- photos ----------
+  const ymdOf = (ms) => (Number.isFinite(ms) && ms > 0 ? todayYMD(new Date(ms)) : null);
+  if ($("g-file")) $("g-file").addEventListener("change", async (e) => {
+    const files = [...(e.target.files || [])].filter((f) => /^image\//.test(f.type) || /\.(jpe?g|png|heic|webp|gif)$/i.test(f.name));
+    e.target.value = "";
+    if (!files.length) return;
+    const forced = addForDate && parseYMD(addForDate) && diffDays(today(), addForDate) <= 0 ? addForDate : null;
+    addForDate = null;
+    if (!forced) tab = "ph";
+    if (forced) selDay = forced;
+    render(); phStatus(T.adding); if (forced) status(T.adding);
+    let n = 0, last = null;
+    for (const f of files) {
+      try {
+        const buf = await f.arrayBuffer();
+        let date = exifDate(buf), src = "exif";
+        if (forced) { date = forced; src = "user"; }
+        else {
+          if (!date) { date = ymdOf(f.lastModified); src = "file"; }
+          if (!date || diffDays(today(), date) > 0) { date = today(); src = "today"; }
+        }
+        const full = await resizeImage(f, 1600, 0.85), th = await resizeImage(f, 360, 0.8);
+        const rec = { id: "p" + Date.now().toString(36) + Math.random().toString(36).slice(2, 9), date, dateSource: src, note: "", blob: full.blob, thumb: th.blob, w: full.w, h: full.h, added: Date.now(), updatedAt: Date.now(), ...(fam ? { shared: "pending", mine: true } : {}) };
+        await photoPut(rec); n++; last = rec.id;
+      } catch (err) { console.warn("photo skipped", err); }
+    }
+    photos = await photoList(); render();
+    if (forced) status(T.addedOn(n, fmtD(forced)));
+    else { phStatus(T.added(n)); if (n === 1 && last) openView(last); }
+    kick();
+  });
+  const fileName = (p) => { const a = photoAge(st.birth, p.date); return `growth_${p.date}${a && !a.before ? "_D+" + a.dplus : ""}_${p.id}.jpg`; };
+  let viewUrl = null;
+  function openView(id) {
+    const p = photos.find((x) => x.id === id); if (!p) return;
+    viewing = p; if (viewUrl) URL.revokeObjectURL(viewUrl); viewUrl = URL.createObjectURL(p.blob);
+    $("g-view-img").src = viewUrl; $("g-view-img").alt = p.note || "";
+    $("g-view-date").value = p.date; $("g-view-date").max = today(); $("g-view-note").value = p.note || "";
+    $("g-view-age").textContent = T.phAge(photoAge(st.birth, p.date));
+    const by = $("g-view-by"); by.hidden = !(p.remote && !p.mine); by.textContent = p.by ? T.by(p.by) : T.byFam;
+    $("g-view-dl").href = viewUrl; $("g-view-dl").download = fileName(p);
+    $("g-view-date").readOnly = $("g-view-note").readOnly = viewOnly();
+    $("g-view").hidden = false; document.body.classList.add("g-lock");
+  }
+  const closeView = () => { $("g-view").hidden = true; document.body.classList.remove("g-lock"); viewing = null; };
+  if ($("g-view-x")) $("g-view-x").addEventListener("click", closeView);
+  if ($("g-view")) $("g-view").addEventListener("click", (e) => { if (e.target === $("g-view")) closeView(); });
+  if ($("g-view-date")) $("g-view-date").addEventListener("input", () => { const v = $("g-view-date").value; if (parseYMD(v)) $("g-view-age").textContent = T.phAge(photoAge(st.birth, v)); });
+  if ($("g-view-save")) $("g-view-save").addEventListener("click", async () => {
+    if (!viewing) return;
+    const v = $("g-view-date").value;
+    const rec = { ...viewing, note: $("g-view-note").value.trim().slice(0, 300), date: parseYMD(v) && diffDays(today(), v) <= 0 ? v : viewing.date, dateSource: v !== viewing.date ? "user" : viewing.dateSource, updatedAt: Date.now() };
+    await photoPut(rec); photos = await photoList(); closeView(); render(); phStatus(T.saved); kick();
+  });
+  if ($("g-view-del")) $("g-view-del").addEventListener("click", async () => {
+    const shared = fam && viewing && (viewing.shared === "yes" || viewing.shared === "pending" || viewing.remote);
+    if (!viewing || !confirm(shared ? T.confirmDelShared : T.confirmDel)) return;
+    if (shared && !st.delq.includes(viewing.id)) { st.delq.push(viewing.id); saveSt(); }
+    await photoDelete(viewing.id); photos = await photoList(); closeView(); render(); kick();
+  });
+  if ($("g-export")) $("g-export").addEventListener("click", async () => {
+    if (!photos.length) { phStatus(T.nothingExp); return; }
+    const files = [], meta = [];
+    for (const p of photos) {
+      const a = photoAge(st.birth, p.date), name = "photos/" + fileName(p);
+      files.push({ name, data: new Uint8Array(await p.blob.arrayBuffer()) });
+      meta.push({ file: name, date: p.date, dplus: a && !a.before ? a.dplus : null, months: a && !a.before ? a.months : null, note: p.note || "" });
+    }
+    files.push({ name: "photos.json", data: new TextEncoder().encode(JSON.stringify({ birth: st.birth, exported: new Date().toISOString(), photos: meta }, null, 2)) });
+    const blob = new Blob([makeZip(files)], { type: "application/zip" }), u = URL.createObjectURL(blob), a = document.createElement("a");
+    a.href = u; a.download = `newbornkr-growth-photos-${today().replace(/-/g, "")}.zip`; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(u), 4000);
+  });
+
+  // ---------- birth date + milestone marks + photos shared through the tracker's family code ----------
+  let fam = famInfo(localStorage), famState = "", syncing = false, again = false, timer = null;
+  const api = makeApi((u, o) => fetch(u, o));
+  function famUI() {
+    const box = $("g-fam"), localNote = $("g-phnote-local");
+    if (!box) return;
+    const on = !!fam && famState !== "gone";
+    box.hidden = !fam; if (localNote) localNote.hidden = on;
+    if (!fam) return;
+    const pend = photos.filter((p) => p.shared === "pending").length, err = photos.filter((p) => p.shared === "err").length;
+    const live = photos.filter((p) => p.shared === "yes").length;
+    const parts = [famState === "gone" ? T.famGone : famState === "off" ? T.famOff : syncing ? T.famSyncing : T.famOk(live)];
+    if (pend && famState !== "gone") parts.push(T.famPend(pend)); if (err) parts.push(T.famErr(err));
+    $("g-fam-st").textContent = parts.join(" · ");
+    const loc = photos.filter((p) => !p.shared && !p.remote);
+    $("g-fam-offer").hidden = !on || !loc.length || st.offerLater === loc.length;
+    $("g-fam-offer-t").textContent = T.offer(loc.length); $("g-fam-share").textContent = T.shareBtn(loc.length);
+  }
+  if ($("g-fam-share")) $("g-fam-share").addEventListener("click", async () => {
+    for (const p of photos.filter((x) => !x.shared && !x.remote)) await photoPut({ ...p, shared: "pending", mine: true, updatedAt: p.updatedAt || p.added || Date.now() });
+    photos = await photoList(); render(); kick();
+  });
+  if ($("g-fam-later")) $("g-fam-later").addEventListener("click", () => { st.offerLater = photos.filter((p) => !p.shared && !p.remote).length; saveSt(); famUI(); });
+  async function famSync() {
+    fam = famInfo(localStorage);
+    document.body.classList.toggle("g-viewonly", viewOnly());
+    if (!fam) { famState = ""; famUI(); return; }
+    if (!navigator.onLine) { famState = "off"; famUI(); return; }
+    if (syncing) { again = true; return; }
+    syncing = true; famUI();
+    try {
+      const b = await syncBirth(api, fam, st);
+      if (b.status === 404) { famState = "gone"; return; }
+      const m = await syncMarks(api, fam, st);
+      const c = await syncCustoms(api, fam, st);
+      saveSt();
+      let msg = "";
+      if (b.changed) { $("g-setup").hidden = true; msg = T.birthFromFam; }
+      if (m.changed) msg = msg || T.marksFromFam;
+      if (c.changed) msg = msg || T.customsFromFam;
+      const famRes = await syncPhotos(fam, { api, list: photoList, put: photoPut, del: photoDelete, thumb: (blob) => resizeImage(blob, 360, 0.8), delq: st.delq });
+      saveSt();
+      famState = famRes.gone ? "gone" : "";
+      if (famRes.more) again = true;
+      if (b.changed || m.changed || c.changed) { if (msg) status(msg); }
+    } catch (e) { famState = navigator.onLine ? "" : "off"; console.warn("family growth sync", e); }
+    finally {
+      syncing = false;
+      photos = await photoList().catch(() => photos);
+      render();
+      if (again) { again = false; setTimeout(famSync, 500); }
+    }
+  }
+  const kick = () => { clearTimeout(timer); timer = setTimeout(famSync, 300); };
+  window.addEventListener("online", kick);
+  window.addEventListener("offline", () => { famState = "off"; famUI(); });
+  window.addEventListener("storage", (e) => { if (e.key === FAM_KEY) kick(); });
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { /* daily refresh of age/milestone states */ render(); kick(); } });
+  // refresh at local midnight so "this week / now" and age bands never go stale overnight
+  (function scheduleMidnight() {
+    const now = new Date();
+    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5);
+    setTimeout(() => { calYM = null; render(); kick(); scheduleMidnight(); }, Math.max(1000, next - now));
+  })();
+
+  render();
+  photoList().then((l) => { photos = l; render(); kick(); }).catch(() => kick());
+</script>
+
+<style is:global>
+  .g-view-note{display:none;margin:6px 0 10px;font-size:13.5px;line-height:19px;font-weight:600;color:#1e3a8a;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:9px 12px}
+  body.g-viewonly .g-view-note{display:block}
+  body.g-viewonly label[for="g-file"],body.g-viewonly #g-setup,body.g-viewonly #g-change,body.g-viewonly #g-view-save,body.g-viewonly #g-view-del,body.g-viewonly .g-fam-offer,
+  body.g-viewonly [data-ms],body.g-viewonly [data-custom],body.g-viewonly .g-custom-add,body.g-viewonly [data-done]{display:none!important}
+  .g-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:14px;margin:14px 0;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+  .g-card[hidden],.g-seg[hidden],#g-pane-tl[hidden],#g-pane-ph[hidden],.g-view[hidden],.g-mini[hidden],#g-day[hidden]{display:none!important}
+  .g-lbl{display:block;font-size:13px;font-weight:800;margin:6px 0}
+  .g-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .g-input{flex:1;min-width:0;font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:#fff;color:var(--fg);width:100%}
+  .g-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:12px;background:var(--primary);color:#fff;font:inherit;font-size:14px;font-weight:800;padding:10px 14px;cursor:pointer;white-space:nowrap}
+  .g-btn.g-ghost{background:var(--secondary);color:var(--secfg)}
+  .g-btn.g-danger{background:#fee2e2;color:#b91c1c}
+  .g-link{background:none;border:0;color:var(--primary);font:inherit;font-size:13px;font-weight:700;cursor:pointer;padding:4px}
+  .g-err{color:#b91c1c;font-size:13px;font-weight:700;margin:8px 0 0}
+  .g-mini{font-size:12px;color:var(--mutedfg);margin:8px 0 0}
+  .g-now{background:linear-gradient(135deg,#0ea5e9,#38bdf8);color:#fff;border:0}
+  .g-now .g-link{color:#fff;text-decoration:underline}
+  .g-now .g-mini{color:rgba(255,255,255,.85)}
+  .g-now-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+  .g-dplus{display:block;font-size:30px;font-weight:900;letter-spacing:-.5px;line-height:1.1}
+  .g-age{font-size:14px;font-weight:700}
+  .g-now-band{margin:10px 0 0;font-size:14px;font-weight:800;background:rgba(255,255,255,.18);border-radius:10px;padding:8px 10px}
+  .g-h2{font-size:15.5px;font-weight:800;margin:0 0 10px}
+  .g-h2 small{color:var(--mutedfg);font-weight:700}
+  .g-up,.g-its{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+  .g-it{display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:12px;padding:9px 10px;flex-wrap:wrap}
+  .g-it.now{background:#eef2ff;border:1px solid #c7d2fe}
+  .g-it.past,.g-it.done{opacity:.55}
+  .g-it.done .g-tx b{text-decoration:line-through}
+  .g-it.custom.done{opacity:1}.g-it.custom.done .g-tx b{text-decoration:none} /* an achieved milestone is a happy event, not a crossed-out task */
+  .g-ic{font-size:18px;flex:none}
+  .g-tx{flex:1 1 55%;min-width:0;display:flex;flex-direction:column}
+  .g-tx b{font-size:14px;line-height:19px}
+  .g-tx b a{color:var(--primary)}
+  .g-tx small{font-size:12px;color:var(--mutedfg);line-height:17px}
+  .g-when{flex:none;font-size:12px;font-weight:800;color:#4338ca;background:#e0e7ff;border-radius:100px;padding:3px 8px;white-space:nowrap}
+  .g-it.past .g-when{background:#e2e8f0;color:#475569}
+  .g-it .g-when+.g-done{margin-left:0}
+  .g-done{flex:none;border:1px solid var(--border);background:#fff;border-radius:100px;padding:4px 10px;font:inherit;font-size:12px;font-weight:700;color:var(--fg);cursor:pointer}
+  .g-done[aria-pressed="true"]{background:#dcfce7;border-color:#86efac;color:#166534}
+  .g-empty{color:var(--mutedfg);font-size:13px;list-style:none}
+  .g-tl{position:relative;margin:4px 0 0;padding-left:18px;border-left:3px solid #bae6fd}
+  .g-band{position:relative;background:var(--card);border:1px solid var(--border);border-radius:16px;margin:0 0 10px;padding:0}
+  .g-band summary{list-style:none;display:flex;align-items:center;gap:10px;padding:12px;cursor:pointer}
+  .g-band summary::-webkit-details-marker{display:none}
+  .g-dot{position:absolute;left:-29px;top:16px;width:15px;height:15px;border-radius:50%;background:#fff;border:3px solid #7dd3fc}
+  .g-band.now{border:2px solid var(--primary);box-shadow:0 4px 14px rgba(14,165,233,.18)}
+  .g-band.now .g-dot{background:var(--primary);border-color:var(--primary);box-shadow:0 0 0 4px #bae6fd}
+  .g-band.past{background:#f8fafc}
+  .g-band.past .g-bt b{color:var(--mutedfg)}
+  .g-band.past .g-dot{background:#cbd5e1;border-color:#cbd5e1}
+  .g-bt{flex:1;display:flex;flex-direction:column}
+  .g-bt b{font-size:15px;font-weight:800}
+  .g-bt small{font-size:12px;color:var(--mutedfg)}
+  .g-chip{font-style:normal;font-size:11px;font-weight:800;border-radius:100px;padding:3px 9px;background:#e2e8f0;color:#334155}
+  .g-chip.now{background:var(--primary);color:#fff}
+  .g-chip.next{background:var(--secondary);color:var(--secfg)}
+  .g-body{padding:0 12px 12px}
+  .g-h3{font-size:13.5px;font-weight:800;margin:14px 0 6px}
+  .g-cats{display:grid;grid-template-columns:1fr;gap:8px}
+  .g-cat{background:var(--bg);border-radius:12px;padding:8px 10px}
+  .g-cat h4{margin:0 0 4px;font-size:12px;font-weight:800;color:var(--secfg)}
+  .g-cat ul,.g-play{margin:0;padding-left:18px;font-size:13px;line-height:19px}
+  .g-play li{margin:2px 0}
+  .g-band.after{border:0;background:none;padding:4px 2px}
+  .g-disc{font-size:12px;line-height:18px;color:var(--mutedfg);margin:18px 0 8px}
+  .g-src h2{font-size:13px;font-weight:800;margin:0 0 4px}
+  .g-src ul{margin:0;padding-left:18px;font-size:12px;line-height:19px}
+  .g-src a{color:var(--primary)}
+</style>
+<style is:global>
+  .g-quick{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 12px}
+  .g-qchip{border:1px solid var(--border);background:var(--secondary);color:var(--secfg);border-radius:999px;font:inherit;font-size:14px;font-weight:800;padding:9px 14px;cursor:pointer}
+  .g-qchip.g-hint{background:#fef9c3;border-color:#fde68a;color:#854d0e}
+  .g-qchip[hidden]{display:none}
+  .g-ymd{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:8px}
+  .g-ymd label{display:flex;align-items:center;gap:4px;font-weight:800;font-size:15px}
+  .g-sel{flex:1;min-width:0;font:inherit;font-size:18px;font-weight:800;padding:12px 8px;border:1.5px solid var(--border);border-radius:14px;background:#fff;color:var(--fg);appearance:auto}
+  .g-agein{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0 0;font-size:14px;font-weight:700;color:var(--mutedfg)}
+  .g-num{flex:0 0 96px;font-size:18px;font-weight:800;text-align:center;padding:10px 8px}
+  .g-unit{flex:0 1 auto;font-size:15px;padding:10px 8px}
+  .g-confirm{margin:12px 0 0;padding:10px 12px;border-radius:12px;background:#f1f5f9;font-size:15px;font-weight:800;color:#334155}
+  .g-confirm.ok{background:#ecfdf5;color:#047857}
+  .g-confirm.bad{background:#fef2f2;color:#b91c1c}
+  .g-setup-act{margin-top:12px}
+  .g-btn.g-big{flex:1;font-size:16px;padding:14px}
+  .g-btn[hidden]{display:none}
+</style>
+
+<style is:global>
+  .g-cal-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+  .g-cal-head .g-h2{margin:0;flex:1;text-align:center}
+  .g-cal-nav{width:40px;height:40px;border:1px solid var(--border);border-radius:12px;background:var(--secondary);color:var(--secfg);font:inherit;font-size:22px;font-weight:800;cursor:pointer;line-height:1}
+  .g-cal-dows{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;text-align:center;font-size:11px;font-weight:800;color:var(--mutedfg)}
+  .g-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+  .g-cell{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:2px;min-height:48px;padding:6px 2px 4px;border:1px solid transparent;border-radius:12px;background:var(--bg);font:inherit;cursor:pointer;color:var(--fg);overflow:hidden}
+  .g-cell.empty{background:transparent;cursor:default;min-height:48px;border:0;overflow:visible}
+  .g-cell .g-dn{font-size:13px;font-weight:800;line-height:1}
+  .g-cell.has-ph{padding:3px 2px}
+  .g-cell-ph{position:absolute;inset:3px;width:auto;height:auto;object-fit:cover;border-radius:9px;pointer-events:none}
+  .g-cell.has-ph .g-dn{position:relative;z-index:1;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.7);background:rgba(15,23,42,.42);border-radius:999px;padding:2px 6px;margin-top:2px}
+  .g-cell.has-ph .g-dots{position:relative;z-index:1}
+  .g-cell-pn{position:absolute;top:4px;right:4px;z-index:1;font-size:9px;font-weight:800;color:#fff;background:rgba(15,23,42,.55);border-radius:999px;padding:1px 4px}
+  .g-cell .g-dots{display:flex;gap:2px;min-height:6px;flex-wrap:wrap;justify-content:center}
+  .g-dotk{width:5px;height:5px;border-radius:50%;background:#94a3b8;display:inline-block}
+  .g-dotk.vax{background:#6366f1}.g-dotk.check{background:#0ea5e9}.g-dotk.benefit{background:#f59e0b}.g-dotk.day{background:#ec4899}.g-dotk.more{background:#cbd5e1}
+  .g-cal-grid,.g-cal-leg{--g-sel:#6d28d9;--g-sel-deep:#4c1d95}
+  .g-cell.today{border-color:transparent;background:var(--bg);box-shadow:none}
+  .g-today-lab{position:relative;z-index:1;display:block;font-size:8px;font-weight:800;line-height:1;letter-spacing:-.2px;color:#0369a1;margin-top:1px;max-width:100%;overflow:hidden;white-space:nowrap}
+  .g-cell.has-ph .g-today-lab{color:#fff;background:#0284c7;border-radius:999px;padding:1px 4px;text-shadow:none}
+  .g-cell.d100,.g-cell.dol{background:#fdf2f8}
+  .g-cell.d100 .g-dn,.g-cell.dol .g-dn{color:#be185d}
+  .g-cell.birth .g-dn{color:var(--primary)}
+  .g-cell.sel{background:var(--g-sel);border-color:var(--g-sel-deep);color:#fff;outline:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22)}
+  .g-cell.sel .g-dn,.g-cell.sel.birth .g-dn,.g-cell.sel.d100 .g-dn,.g-cell.sel.dol .g-dn{color:#fff}
+  .g-cell.sel.d100,.g-cell.sel.dol{background:var(--g-sel)}
+  .g-cell.sel .g-today-lab{color:#0369a1;background:#e0f2fe;border-radius:999px;padding:1px 4px}
+  .g-cell.sel.has-ph{background:transparent;border-color:transparent;box-shadow:none;color:var(--fg)}
+  .g-cell.sel.has-ph::before{content:"";position:absolute;inset:0;border:3px solid var(--g-sel);border-radius:12px;z-index:2;pointer-events:none;box-shadow:inset 0 0 0 1px #fff}
+  .g-cell.sel.has-ph .g-dn{background:var(--g-sel);color:#fff;text-shadow:none}
+  .g-cell.sel.has-ph .g-today-lab{background:#0284c7;color:#fff}
+  .g-cal-leg{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin-top:10px;font-size:11px;font-weight:700;color:var(--mutedfg)}
+  .g-legi{display:inline-flex;align-items:center;white-space:nowrap}
+  .g-leg{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:4px;vertical-align:middle}
+  .g-leg.today{width:14px;height:8px;background:transparent;border:0;border-bottom:2px solid #0284c7;border-radius:0;vertical-align:middle}
+  .g-leg.sel{background:var(--g-sel);border:1px solid var(--g-sel-deep)}
+  .g-leg.d100,.g-leg.dol{background:#fbcfe8}
+  @media (prefers-color-scheme: dark){
+    .g-cal-grid,.g-cal-leg{--g-sel:#8b5cf6;--g-sel-deep:#c4b5fd}
+    .g-cell.today{background:transparent}
+    .g-today-lab{color:#7dd3fc}
+    .g-cell.has-ph .g-today-lab,.g-cell.sel.has-ph .g-today-lab{background:#0369a1;color:#e0f2fe}
+    .g-cell.sel{background:var(--g-sel);border-color:var(--g-sel-deep);color:#fff}
+    .g-cell.sel .g-today-lab{background:#0c4a6e;color:#e0f2fe}
+    .g-cell.sel.has-ph::before{border-color:var(--g-sel);box-shadow:inset 0 0 0 1px #1e1b4b}
+    .g-leg.today{border-bottom-color:#7dd3fc}
+  }
+  html{scroll-padding-bottom:calc(80px + env(safe-area-inset-bottom, 0px))}
+  .g-day{margin-top:12px;padding-top:10px;border-top:1px dashed var(--border);scroll-margin-bottom:calc(80px + env(safe-area-inset-bottom, 0px))}
+  #g-day-add{scroll-margin-bottom:calc(80px + env(safe-area-inset-bottom, 0px))}
+  .g-day-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .g-day-h b{font-size:14px}
+  .g-ms-g{border:1px solid var(--border);border-radius:14px;margin:8px 0 0;background:var(--bg)}
+  .g-ms-g summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;cursor:pointer;font-weight:800}
+  .g-ms-g summary::-webkit-details-marker{display:none}
+  .g-ms-g.now{border-color:var(--primary);background:#f0f9ff}
+  .g-ms-list{list-style:none;margin:0;padding:0 8px 10px;display:flex;flex-direction:column;gap:6px}
+  .g-ms-it{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:var(--card);border-radius:12px;padding:9px 10px}
+  .g-ms-it.hi{border:1.5px solid #38bdf8;box-shadow:0 0 0 3px #e0f2fe}
+  .g-ms-it.achieved{opacity:.7}
+  .g-ms-it.achieved .g-tx b{text-decoration:line-through}
+  .g-ms-it.upcoming{opacity:.85}
+  .g-ms-edit{flex:1 1 100%;display:flex;flex-direction:column;gap:8px;padding:6px 0 0}
+  .g-ms-date{max-width:180px}
+  .g-ms-done{color:#166534}
+  .g-chip.past{background:#e2e8f0;color:#475569}
+
+  .g-dotk.custom,.g-dotk.ms{background:#10b981}
+  .g-cell.has-ms .g-dn{text-decoration:underline;text-decoration-color:#10b981;text-decoration-thickness:2px;text-underline-offset:2px}
+  .g-day-ms{margin-top:10px}.g-day-msadd{margin-top:10px;width:100%}.g-day-acts{margin:0 0 8px}
+  .g-leg.custom{background:#bbf7d0;border:1px solid #10b981}
+  .g-ms-it.custom{border:1px dashed #86efac;background:#f0fdf4}
+  .g-ms-it.custom-add{background:transparent;border:0;justify-content:center;padding:4px}
+  .g-custom-add{width:100%}
+  .g-custom-form .g-custom-text{margin-top:4px}
+  .g-danger-link{color:#b91c1c!important}
+  .g-it.custom.done{opacity:.55}
+
+  .g-seg{display:flex;background:var(--muted);border-radius:12px;padding:4px;gap:4px;margin:6px 0 4px}
+  .g-seg button{flex:1;border:0;background:none;border-radius:9px;padding:9px;font:inherit;font-size:14px;font-weight:800;color:var(--mutedfg);cursor:pointer}
+  .g-seg button[aria-selected="true"]{background:#fff;color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .g-phc{font-size:12px;font-weight:700;color:var(--mutedfg)}
+  .g-ths{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .g-th{position:relative;display:block;aspect-ratio:1;border:0;border-radius:12px;overflow:hidden;background:var(--muted);padding:0;cursor:pointer}
+  .g-th img{width:100%;height:100%;object-fit:cover;display:block}
+  .g-th span{position:absolute;left:4px;bottom:4px;font-size:10.5px;font-weight:800;color:#fff;background:rgba(15,23,42,.6);border-radius:6px;padding:1px 5px}
+  .g-th i{position:absolute;left:0;right:0;top:0;font-style:normal;font-size:10.5px;color:#fff;background:linear-gradient(rgba(15,23,42,.55),transparent);padding:4px 5px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
+  .g-add{display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;color:var(--primary);border:2px dashed #7dd3fc;background:#f0f9ff}
+  .g-add span{position:static;background:none;color:var(--primary);font-size:11px}
+  .g-ph-act .g-btn{flex:1}
+  .g-phnote{font-size:12.5px;line-height:18px;color:#334155;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:12px;padding:8px 10px;margin:10px 0 0}
+  .g-famlink{display:block;margin-top:4px;color:var(--primary);font-weight:700}
+  .g-fam{margin:10px 0 0;padding:10px 12px;border-radius:12px;background:#eff6ff;border:1px solid #bfdbfe}
+  .g-fam[hidden],.g-fam-offer[hidden],.g-phnote[hidden],.g-view-by[hidden]{display:none}
+  .g-fam-h{margin:0;font-size:13px;line-height:19px;color:#1e3a8a}
+  .g-fam-st{margin:4px 0 0}
+  .g-fam-offer{margin:10px 0 0;padding-top:10px;border-top:1px dashed #bfdbfe}
+  .g-fam-offer p{margin:0 0 8px;font-size:13.5px;font-weight:700}
+  .g-shb{position:absolute;top:4px;right:4px;font-style:normal;font-size:12px;line-height:1;background:rgba(255,255,255,.9);border-radius:999px;padding:3px 4px}
+  .g-view{position:fixed;inset:0;z-index:60;background:rgba(15,23,42,.72);display:flex;align-items:flex-end;justify-content:center}
+  .g-view-in{position:relative;background:#fff;width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:20px 20px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom))}
+  .g-view-in img{display:block;width:100%;max-height:50vh;object-fit:contain;border-radius:12px;background:var(--muted)}
+  .g-view-x{position:absolute;right:20px;top:20px;width:34px;height:34px;border-radius:50%;border:0;background:rgba(15,23,42,.6);color:#fff;font-size:16px;cursor:pointer;z-index:1}
+  .g-view-age{font-size:14px;font-weight:800;margin:10px 0 0;color:var(--secfg)}
+  .g-view-act{margin-top:12px}
+  .g-view-act .g-btn{flex:1}
+  .g-view-by{margin:0 0 6px}
+  body.g-lock{overflow:hidden}
+  .g-dotk.photo{background:#f59e0b}
+  .g-leg.photo{background:#fde68a;border:1px solid #f59e0b}
+  .g-day-ph{margin:0 0 10px}
+  .g-day-hero{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;border-radius:14px;background:#0f172a;scrollbar-width:none}
+  .g-day-hero::-webkit-scrollbar{display:none}
+  .g-day-slide{flex:0 0 100%;scroll-snap-align:start;position:relative;aspect-ratio:4/3;border:0;padding:0;background:#0f172a;cursor:pointer}
+  .g-day-slide img{width:100%;height:100%;object-fit:cover;display:block}
+  .g-day-slide span{position:absolute;left:8px;bottom:8px;font-size:12px;font-weight:800;color:#fff;background:rgba(15,23,42,.55);border-radius:8px;padding:3px 8px}
+  .g-day-slide i{position:absolute;left:0;right:0;top:0;font-style:normal;font-size:12px;color:#fff;background:linear-gradient(rgba(15,23,42,.55),transparent);padding:8px 10px 16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
+  .g-day-dots{display:flex;justify-content:center;gap:5px;margin:8px 0 0}
+  .g-day-dots i{width:6px;height:6px;border-radius:50%;background:#cbd5e1;display:inline-block}
+  .g-day-dots i.on{background:var(--primary);width:16px;border-radius:99px}
+  .g-day-phc{margin:6px 0 0;text-align:center}
+  #g-day-add{display:flex;width:100%;margin:0 0 10px;box-sizing:border-box}
+</style>
